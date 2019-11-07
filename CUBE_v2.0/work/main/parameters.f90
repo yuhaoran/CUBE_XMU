@@ -54,7 +54,7 @@ module parameters
   integer(8),parameter :: nfe=nft+2*nfb ! 96
 
   logical,parameter :: body_centered_cubic=.false.
-  integer(8),parameter :: np_nc=ncell ! number of particles / coarse cell / dim
+  integer(8),parameter :: np_nc=ncell/2 ! number of particles / coarse cell / dim
   integer, parameter :: np_nc_nu = ncell/2 ! number of neutrinos per dim per coarse cell
 
   logical,parameter :: Extended_pp_force=.false.
@@ -67,7 +67,7 @@ module parameters
   real,parameter :: pi=4*atan(1.)
 
   ! cosmological parameters
-  real,parameter :: box=300*nn  ! simulation scale /dim, in unit of Mpc/h
+  real,parameter :: box=200*nn  ! simulation scale /dim, in unit of Mpc/h
   real,parameter :: s8=0.8 ! use -Dsigma_8 in initial_conditions
   integer,parameter :: zdim=2 ! the dimension being the redhisft direction
 
