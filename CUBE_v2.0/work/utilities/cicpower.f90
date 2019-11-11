@@ -54,7 +54,7 @@ program cicpower
 
   call create_penfft_plan
 
-  do cur_checkpoint= n_checkpoint,n_checkpoint
+  do cur_checkpoint= n_checkpoint,1,-1
     if (head) print*, 'Start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
 
     !call particle_initialization

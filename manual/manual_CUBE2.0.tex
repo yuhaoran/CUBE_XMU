@@ -68,8 +68,12 @@
 
 \section{Introduction}
 
+When $N\geq 3$, the $N$-body problem does not have general analytical solutions. An $N$-body simulation is a numerical simulation of a system of particles under dynamical interactions, such as gravity. When $N$ is large, it challenges the numerical computation capability and is an importance problem in the field of high performance computing. Currently the largest $N$ in a complete scientific problem is about $N\simeq 3\times 10^{12}$ \cite{2017NatAs...1E.143Y}.
+\\\\
 CUBE is an open-source, parallel $N$-body simulation code for cosmological large scale structures. It is written in Modern Fortran, where Coarray features replaces the MPI communication between computing nodes. 
 Although Fortran is usually considered as an old language, it is efficient and is designed for scientific computing. In addition, usually minimal programming skills are required from scientists, and it has automatic optimizations for fast computation. Modern Fortran language is concise, especially for the multi-dimensional array computation and coarray communications. The code suffixes ``{\tt *.f90}'' indicate that the code is written in Fortran free-form instead of fixed-form. From 2008 and later standards support Coarray Fortran (CAF) but I still name them as ``{\tt *.f90}''.
+\\\\
+CUBE 2.0 has a C language version developed benchmarked on the ``$\pi2.0$'' supercluster (with 512 nodes) in Shanghai Jiao Tong University, and successfully run a benchmark of $N=16384^3\simeq 4.4\times 10^{12}$ cosmological simulation. This is one of the largest in the world.
 \\\\
 CUBE is a two-level particle-mesh (PMPM) based code with particle-particle (PP) force interaction configurations available (from version 2.0). The initial code CUBE (CUBE 1.0) available at \url{https://github.com/yuhaoran/CUBE} and described by paper \cite{2018ApJS..237...24Y}. This manual describes CUBE 2.0. Based on version 1.0, it adds OpenMP, runtime halo-finder, PP force and additional memory optimizations. Version 2.1 includes cosmological neutrino components modelled by $N$-body particles, dark matter halo angular momentum analysis, etc.
 \\\\
@@ -92,14 +96,30 @@ Refer to \S 2.3.2 and \S 2.3.3 of \cite{2018ApJS..237...24Y}.
 
 \subsection{Requirements}
 
-CUBE needs a Fortran compiler and a FFT library. Fortran 2008 standard starts to support Coarray features, which is essential for CUBE. FFT is the key step to solve Poisson equations in gravity solver. A free library is FFTW (\url{fftw.org}). CUBE supports FFTW 3.
+CUBE needs a Fortran compiler and a FFT library. Fortran 2008 standard starts to support Coarray features, which is essential for CUBE. FFT is the key step to solve Poisson equations in gravity solver. A free library is FFTW (\url{fftw.org}). CUBE supports FFTW3.
 
 \section{Benchmark}
-
 Here is an example of testing the code on my MacBook, where MacOS is a Unix based system. 
 
+\subsection{Use Homebrew}
+
+The most convenient way to install the required packages is by {\tt brew}\footnote{Visit \url{https://brew.sh} to install Homebrew (The missing package manager for macOS (or Linux)) on your system, and its documentation.}. On a new MacBook, after installing Homebrew, type
+\\\\
+\indent {\tt > brew install gcc} \\
+\\
+to have latest GNU C and Fortran compilers, and
+\\\\
+\indent {\tt > brew install fftw} \\
+\\
+to install FFTW. If successful, type
+\\\\
+\indent {\tt > brew info fftw} \\
+\\
+to see the location of FFTW libraries for later configuration in CUBE.
+
+
 \subsection{Install FFTW}
-First let's install FFTW library. Download the {\tt fftw-3.3.8.tar.gz} or similar versions from the website.
+This is an explicit way to install FFTW library. Download the {\tt fftw-3.3.8.tar.gz} or similar versions from the website.
 Open a terminal and unzip it:
 \\\\
 \indent {\tt > tar -xvf fftw-3.3.8.tar} \\
@@ -154,16 +174,22 @@ Configure some environment variables
 \\\\
 Here we set the Fortran compiler name, FFT flags, and number of OpenMP threads (could be the number of available cores of the system). Remember to change the FFTW paths based on your FFTW installations. For intel compiler, use ``{\tt -mkl}'' instead of FFTW flags can usually achieve a faster computing speed. If FFTW is installed without OpenMP, remove the flags ``\url{-lfftw3_omp} \url{-lfftw3f_omp}''.
 \\\\
-With these configured, go to directory {\tt main} and run the test script:
+With these configured, go to directory {\tt main} and run (however I encourage users testing step by step from section \ref{s.code}) the test script:
 \\\\
 \indent {\tt > cd main}\\
 \indent {\tt > source run.sh}\\\\
-It runs everything from end to end. This script contains the initial setup by ``{\tt source ../\url{utilities/module_load_mac.sh}}'' and can be expanded as the following steps for compiling and running the code.
+It runs everything from end to end. This script contains 
+\begin{itemize}
+	\item the initial setup by ``{\tt source ../\url{utilities/module_load_mac.sh}}''
+	\item compiling executables by {\tt make} commands
+	\item running the executables
+\end{itemize}
+and will be described in section \ref{s.code}.
 
-\section{Code overview}
+\section{Code overview}\label{s.code}
 
 \subsection{Basic parameters}
-{\tt main/parameters.f90} sets the most basic parameters of the simulation. If the above {\tt run.sh} is successfully completed, it actually simulates $N_p=128^3$ $N$-body particles, representing cold dark matter (CDM), in a $L=50\ {\rm Mpc}/h$ per side cubic box, with periodic boundary conditions. The initial redshift is set to be $z=99$ where the universe is $a=1/(1+z)=0.01$ of the current size, where $a$ is the scale factor. The final redshift is $z=0$ ($a=1$). These, and optionally intermediate redshifts, can be set in \url{main/z_checkpoint.txt}.
+{\tt main/parameters.f90} sets the most basic parameters of the simulation. If the above {\tt run.sh} is successfully completed, it actually simulates $N_p=64^3$ $N$-body particles, representing cold dark matter (CDM), in a $L=200\ {\rm Mpc}/h$ per side cubic box, with periodic boundary conditions. The initial redshift is set to be $z=20$ where the universe is $a=1/(1+z)=1/21$ of the current size, where $a$ is the scale factor. The final redshift is $z=0$ ($a=1$). These, and optionally intermediate redshifts, can be set in \url{main/z_checkpoint.txt}.
 
 \subsection{Initial conditions}
 
@@ -189,13 +215,13 @@ If {\tt ic.x} is finished successfully, it automatically creates the output dire
     -rw-r--r--  1 haoran  staff   8.0M 26 May 13:10 noise_1.bin
     -rw-r--r--  1 haoran  staff   8.0M 26 May 13:10 delta_L_1.bin
     -rw-r--r--  1 haoran  staff    64K 26 May 13:10 delta_L_proj_1.bin
-    -rw-r--r--  1 haoran  staff   8.0M 26 May 13:11 99.000_phi1_1.bin
-    -rw-r--r--  1 haoran  staff   8.0M 26 May 13:11 99.000_id_1.bin
-    -rw-r--r--  1 haoran  staff    12M 26 May 13:11 99.000_xp_1.bin
-    -rw-r--r--  1 haoran  staff    12M 26 May 13:11 99.000_vp_1.bin
-    -rw-r--r--  1 haoran  staff   128K 26 May 13:11 99.000_np_1.bin
-    -rw-r--r--  1 haoran  staff   384K 26 May 13:11 99.000_vc_1.bin
-    -rw-r--r--  1 haoran  staff   224B 26 May 13:11 99.000_info_1.bin
+    -rw-r--r--  1 haoran  staff   8.0M 26 May 13:11 20.000_phi1_1.bin
+    -rw-r--r--  1 haoran  staff   8.0M 26 May 13:11 20.000_id_1.bin
+    -rw-r--r--  1 haoran  staff    12M 26 May 13:11 20.000_xp_1.bin
+    -rw-r--r--  1 haoran  staff    12M 26 May 13:11 20.000_vp_1.bin
+    -rw-r--r--  1 haoran  staff   128K 26 May 13:11 20.000_np_1.bin
+    -rw-r--r--  1 haoran  staff   384K 26 May 13:11 20.000_vc_1.bin
+    -rw-r--r--  1 haoran  staff   224B 26 May 13:11 20.000_info_1.bin
 \end{verbatim}
 to check the data are generated there, and type
 \\\\
@@ -203,7 +229,7 @@ to check the data are generated there, and type
 \\\\
 to review that the codes are automatically backed up together with the data. If the program is run on multiple images (usually on multiple computing nodes), there will be more directories named like \url{image2}, containing \url{delta_L_2.bin}, etc.
 \\\\
-Here let's briefly view the data. The file names begin with ``{\tt 99.000}'' indicates that the redshift of the data is $z=99$. The last number ``{\tt 1}'' in ``\url{_1.bin}'' shows the image number. Because CUBE uses a specially compressed format to save disk space (during computation, the memory space is also saved in this way) of the data, the checkpoint of one redshift contains several files. Their suffixes are {\tt *.bin} to indicate that they are in binary formats. The detailed descriptions of the data format are in later sections.
+Here let's briefly view the data. The file names begin with ``{\tt 20.000}'' indicates that the redshift of the data is $z=20$. The last number ``{\tt 1}'' in ``\url{_1.bin}'' shows the image number. Because CUBE uses a specially compressed format to save disk space (during computation, the memory space is also saved in this way) of the data, the checkpoint of one redshift contains several files. Their suffixes are {\tt *.bin} to indicate that they are in binary formats. The detailed descriptions of the data format are in later sections.
 \\\\
 Some special files are generated by the initial condition generator. \url{seed_1.bin} contains the seeds (a series of integers) for random number generator. By default these seeds are generated according to the system clock and are unique. From the same seeds, and by using the same system, we could reproduce the same initial noise field. The noise field, \url{noise_1.bin}, is a series of single precision floating numbers ({\tt real*4}) which follow a standard Gaussian distribution. 
 They are further converted to the initial density fluctuation of the universe by a scale dependent {\it transfer function} $T(k)$, where $k$ is the Fourier wavenumber scalar $k=\sqrt{k_x^2+k_y^2+k_z^2}$. $T(k)$ depends on the cosmological model. Here, we define {\it overdensity}
@@ -216,13 +242,13 @@ a dimensionless quantity. \url{delta_L_1.bin} stores the initial overdensity ext
 \end{equation}
 where $D(z)$ is the {\it growth factor} as a function of redshift $z$. $\delta_L$ is considered as the underlying initial condition field and contains valuable information. In reality $\delta_L$ is unobservable and is expected to be estimated from various observations.
 \\\\
-Usually we simulate the model either by a Eulerian or a Lagrangian method. $N$-body simulation adopts the latter method so we have to use $N$-body particles representing the underlying $\delta_L$ and its subsequent evolution. Therefore, from $\delta_L$ we generate particles and displace them using the Zel'dovich Approximation (ZA) \cite{1970A&A.....5...84Z}. ZA is usually referred to 1st-order Lagrangian perturbation theory (1LPT). $n$LPT ($n>1$) is more accurate but computationally more expensive. When $N$-body simulations are fast, we can safely use 1LPT at a higher redshift to generate initial conditions, where the system is very linear and 1LPT is a good approximation. The resulting particles are generated by the CUBE format, located in the same folder. Besides, \url{99.000_info_1.bin} is a short binary file storing the basic parameters of the simulation. If more details of the above is required, please dig into \url{initial_conditions.f90}. However quick access of simulation information is available if you are familiar with the format. For example, type the following:
+Usually we simulate the model either by a Eulerian or a Lagrangian method. $N$-body simulation adopts the latter method so we have to use $N$-body particles representing the underlying $\delta_L$ and its subsequent evolution. Therefore, from $\delta_L$ we generate particles and displace them using the Zel'dovich Approximation (ZA) \cite{1970A&A.....5...84Z}. ZA is usually referred to 1st-order Lagrangian perturbation theory (1LPT). $n$LPT ($n>1$) is more accurate but computationally more expensive. When $N$-body simulations are fast, we can safely use 1LPT at a higher redshift to generate initial conditions, where the system is very linear and 1LPT is a good approximation. The resulting particles are generated by the CUBE format, located in the same folder. Besides, \url{20.000_info_1.bin} is a short binary file storing the basic parameters of the simulation. If more details of the above is required, please dig into \url{initial_conditions.f90}. However quick access of simulation information is available if you are familiar with the format. For example, type the following:
 \\\\
-\indent {\tt > od -t d4 -N 4 \url{../../output/universe1/image1/99.000_info_1.bin}}\\
-\indent {\tt 0000000  \ \ \ 2097152}\\
+\indent {\tt > od -t d4 -N 4 \url{../../output/universe1/image1/20.000_info_1.bin}}\\
+\indent {\tt 0000000  \ \ \ 262144}\\
 \indent {\tt 0000004}\\
 \\
-It tells you the first 4 byte of the binary file \url{99.000_info_1.bin} in the format of 4-byte integers. The answer \url{2097152} actually shows that there are $128^3=2097152$ in this checkpoint.
+It tells you the first 4 byte of the binary file \url{20.000_info_1.bin} in the format of 4-byte integers. The answer \url{262144} actually shows that there are $64^3=262144$ in this checkpoint.
 
 \subsection{Main code}
 Have initial condition generated, we go to {\tt main} directory and compile the main $N$-body code.
@@ -250,7 +276,7 @@ These files are named \url{[redshift]_[content]_[image].bin} where \url{[redshif
 Alphabetically, \url{[content]}s have the following meanings. \url{[halo]}=halo catalog, \url{[halo_pid]}=particle list (by there particle ID, with \url{PID} enabled) in each halo, \url{[hid]}=halo number (starting form 1) for each particle (0 if the particle in isolated, belonging to none of the halos), \url{[id]}=particle id at the checkpoint, \url{[info]}=header file for the basic information of the checkpoint, \url{[np]}=coarse grid based particle number density field, \url{[vc]}=coarse grid based velocity field, \url{[vp]}=velocities of particles, and \url{[xp]}=positions of particles. Before going further, check if the particle number is conserved:
 \\\\
 \indent {\tt > od -t d4 -N 4 \url{../../output/universe1/image1/0.000_info_1.bin}}\\
-\indent {\tt 0000000  \ \ \ 2097152}\\
+\indent {\tt 0000000  \ \ \ 262144}\\
 \indent {\tt 0000004}\\
 \\
 
