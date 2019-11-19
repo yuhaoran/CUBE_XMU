@@ -1,4 +1,4 @@
-source ../utilities/module_load_mac.sh 
+source ../utilities/module_load_brew.sh 
 
 cd ../utilities/
 make clean

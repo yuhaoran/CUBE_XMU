@@ -12,5 +12,5 @@ export FFTFLAG='-I/usr/local/Cellar/fftw/3.3.8_1/include/ -L/usr/local/Cellar/ff
 export OMP_STACKSIZE=6000M
 export OMP_NUM_THREADS=4
 #export OMP_THREAD_LIMIT=4
-ulimit -s 61000
+ulimit -s 64000
 ulimit

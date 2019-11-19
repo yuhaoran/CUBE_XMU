@@ -166,7 +166,7 @@ The {\tt main} directory stores codes for the main $N$-body simulation. The {\tt
 \\\\
 Configure some environment variables
 \\\\
-\indent {\tt > vim \url{utilities/module_load_mac.sh}}\\
+\indent {\tt > vim \url{utilities/module_load_brew.sh}}\\
 \indent {\tt export FC='gfortran'}\\
 \indent {\tt export FFTFLAG='-I/Users/haoran/opt/include/ -L/Users/haoran/opt/lib/ 
  \\ \indent-lfftw3f -lfftw3 \url{-lfftw3_omp} \url{-lfftw3f_omp} -lm -ldl'}\\
@@ -174,13 +174,13 @@ Configure some environment variables
 \\\\
 Here we set the Fortran compiler name, FFT flags, and number of OpenMP threads (could be the number of available cores of the system). Remember to change the FFTW paths based on your FFTW installations. For intel compiler, use ``{\tt -mkl}'' instead of FFTW flags can usually achieve a faster computing speed. If FFTW is installed without OpenMP, remove the flags ``\url{-lfftw3_omp} \url{-lfftw3f_omp}''.
 \\\\
-With these configured, go to directory {\tt main} and run (however I encourage users testing step by step from section \ref{s.code}) the test script:
+With these configured, go to directory {\tt main} and run (\tcr{however I encourage users testing step by step from section \ref{s.code}}) the test script:
 \\\\
 \indent {\tt > cd main}\\
 \indent {\tt > source run.sh}\\\\
 It runs everything from end to end. This script contains 
 \begin{itemize}
-	\item the initial setup by ``{\tt source ../\url{utilities/module_load_mac.sh}}''
+	\item the initial setup by ``{\tt source ../\url{utilities/module_load_brew.sh}}''
 	\item compiling executables by {\tt make} commands
 	\item running the executables
 \end{itemize}
@@ -193,9 +193,9 @@ and will be described in section \ref{s.code}.
 
 \subsection{Initial conditions}
 
-The initial condition generator is written in \url{utilities/initial_conditions.f90}. Again, set apply the environmental variables in \url{module_load_mac.sh} first, and compile the initial condition code. In the directory \url{utilities/}:
+The initial condition generator is written in \url{utilities/initial_conditions.f90}. Again, set apply the environmental variables in \url{module_load_brew.sh} (if you have installed the FFTW by using {\tt brew} on a MacOS system, then this configuration file should work) first, and compile the initial condition code. In the directory \url{utilities/}:
 \\\\
-\indent {\tt > source \url{module_load_mac.sh}}\\
+\indent {\tt > source \url{module_load_brew.sh}}\\
 \indent {\tt > make ic.x}
 \\\\
 then it will generate the executable \url{ic.x}. To view the details, check \url{Makefile} in the same directory for the dependencies of \url{ic.x}. Beside \url{initial_conditions.f90}, it uses \url{../main/parameters.f90}, \url{../main/variables.f90} and \url{../main/pencil_fft.f90}. In the \url{Makefile} it also declares some preprocessors. For example, ``{\tt OPTIONS=-DFFTFINE}'' defines the macro ``\url{FFTFINE}'', which allows the global, distributed FFT work on a fine grid. ``{\tt OPTIONS+=-DPID}'' defines the macro ``\url{PID}'', which enables the ``particle identification (PID)'' then each $N$-body particle has a ``name''. On the screen it displays the detailed steps of the compilation, and if there is no errors, type ``{\tt ls -lrt ic.x}'' to check if a new executable is indeed generated.
