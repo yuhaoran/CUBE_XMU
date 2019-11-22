@@ -42,7 +42,7 @@ module parameters
 # endif
   integer(8),parameter :: npen=ng/nn ! ng /dim in shorter side of the pencil, for pencil decomposition
   integer(8),parameter :: ng_global=ng*nn
-  integer(8),parameter :: nyquest=ng_global/2
+  integer(8),parameter :: nyquist=ng_global/2
 
   integer(8),parameter :: ncb=6 ! nc in buffer /dim, single side; 6 by default
   integer(8),parameter :: nce=nc+2*ncb ! extended nc

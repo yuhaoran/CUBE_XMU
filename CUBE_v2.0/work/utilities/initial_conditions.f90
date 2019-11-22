@@ -1,66 +1,30 @@
-!#define onehalo
+!! use simga_8 to specify the power spectrum amplitude
 #define sigma_8
+!! read existing random seed to generate random numbers
 !#define READ_SEED
+!! read same random noise to generate same initial conditions
 !#define READ_NOISE
-!#define READ_RECO
-!#define filter_phi
-!#define force_power
-
-!#define ELUCID
-!#define IniC_R0
-!#define IniC_E
 
 program initial_conditions
   use omp_lib
   use variables, only: spine_tile
-  use pencil_fft
+  use pencil_fft !! my own libary for global FFT
   use iso_fortran_env, only : int64
-# ifdef force_power
-    use powerspectrum
-# endif
   implicit none
   save
 
   ! nc: coarse grid per image per dim
   ! nf: fine grid per image per dim, ng=nf
-  ! nyquest: Nyquest frequency
+  ! nyquist: nyquist frequency
   logical,parameter :: correct_kernel=.true.
   logical,parameter :: write_potential=.true.
 
 #ifdef sigma_8
-  integer(8),parameter :: nk=1000
-  real tf(7,nk)
+  integer(8),parameter :: nk=1000 ! transfer function length
+  real tf(7,nk) ! transfer function array
 #else
   integer(8),parameter :: nk=132
   real tf(14,nk)
-#endif
-
-#ifdef onehalo
-  integer pid_halo(100000),np_halo,ipos(3),nw,iw
-  real xv(6,100000),xv_mean(6),ang_mom(3)
-#endif
-
-  complex, allocatable :: cxyz_r(:,:,:)
-#ifdef ELUCID
-# define delta_small
-  integer,parameter :: nr=500
-  character(*),parameter :: file_deltak='../../S500_5001/cxyz_251_500_500.bin'
-#endif
-
-#ifdef IniC_R0
-# define delta_big
-  integer,parameter :: nr=400
-  character(*),parameter :: file_deltak='../../IniC/cxyz_201_400_400.bin'
-#endif
-#ifdef IniC_R1
-# define delta_big
-  integer,parameter :: nr=200
-  character(*),parameter :: file_deltak='../../IniC/cxyz_101_200_200.bin'
-#endif
-#ifdef IniC_R2
-# define delta_big
-  integer,parameter :: nr=300
-  character(*),parameter :: file_deltak='../../IniC/cxyz_151_300_300.bin'
 #endif
 
   integer(8) i,j,k,ip,l,nzero
@@ -73,48 +37,38 @@ program initial_conditions
   integer(4),allocatable :: iseed(:)
   real,allocatable :: rseed_all(:,:)
 
-  complex delta_k(nyquest+1,nf,npen)
-  real phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*]
+  complex delta_k(nyquist+1,nf,npen) !! delta(k) in Fourier space
+  real phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*] !! gravitational potential in real space, with buffers
 
-  ! zip arrays
-  integer(8),parameter :: npt=nt*np_nc ! np / tile / dim !64
-  integer(8),parameter :: npb=ncb*np_nc !24
-  integer(8),parameter :: npmax=2*(npt+2*npb)**3
-  integer(4) rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb)
-  integer(1) rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb)
-  real(4) vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb)
-  integer(8) idx_ex_r(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb)
-  integer(8),dimension(nt,nt) :: pp_l,pp_r,ppe_l,ppe_r
+  !! zip format arrays
+  integer(8),parameter :: npt=nt*np_nc ! np (number of particle) / tile / dimension (dim)
+  integer(8),parameter :: npb=ncb*np_nc ! np / buffer depth
+  integer(8),parameter :: npmax=2*(npt+2*npb)**3 ! maximum np in memory
+  integer(4) rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! rho_coarse_extended(with buffer)
+  integer(1) rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! auxilary rhoce for counting particles  ! very technical
+  real(4) vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! coarse grid velocity field (with buffer)
+  integer(8) idx_ex_r(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! index_extended_rhs ! very technical
+  integer(8),dimension(nt,nt) :: pp_l,pp_r,ppe_l,ppe_r ! for particle index ! very technical
 
-  integer(izipx) xp(3,npmax)
-  integer(izipv) vp(3,npmax)
+  integer(izipx) xp(3,npmax) ! integer-based particle positions, izipx = 1 or 2
+  integer(izipv) vp(3,npmax) ! integer-based particle velocities, izipv = 1 or 2
 #ifdef PID
-    integer(4) pid(npmax)
+    integer(4) pid(npmax) ! particle ID (tag), if np>2^31, use integer(8) for pid
 #endif
-#ifdef force_power
-  real xi(10,nbin)[*]
-#endif
-  real grad_max(3)[*],vmax(3),vf
-  real(4) svz(500,2),svr(100,2)
-  real(8) sigma_vc,sigma_vf
-  real(8) std_vsim_c,std_vsim_res,std_vsim
-  character (10) :: img_s, z_s
+  real grad_max(3)[*],vmax(3),vf ! max of gradient of phi; max velocity; velocity factor
+  real(4) svz(500,2),svr(100,2) ! for velocity conversion between integers and reals
+  real(8) sigma_vc,sigma_vf ! coarse- and fine- grid based velocity dispersion
+  real(8) std_vsim_c,std_vsim_res,std_vsim ! velocity dispersion measured in simulation
+  character (10) :: img_s, z_s ! string for image number and redshift
 
   call system_clock(ttt1,t_rate)
-  call omp_set_num_threads(ncore)
-  call geometry
-  call system('mkdir -p '//opath//'image'//image2str(image))
+  call omp_set_num_threads(ncore) !! set number of cores for OpenMP
+  call geometry !! initialize some basic variables and parameters
+  call system('mkdir -p '//opath//'image'//image2str(image)) !! create output directory
 
-#ifdef onehalo
-  nw=0
-#endif
-
-  cur_checkpoint=1
-  open(16,file='../main/z_checkpoint.txt',status='old')
+  cur_checkpoint=1 !! set current checkpoint to 1
+  open(16,file='../main/z_checkpoint.txt',status='old') !! open redshift list to do checkpoint
   read(16,fmt='(f8.4)') z_checkpoint(cur_checkpoint)
-# ifdef force_power
-    z_checkpoint(cur_checkpoint)=5.0
-# endif
   close(16)
 
   if (head) then
@@ -140,41 +94,41 @@ program initial_conditions
   endif
 
   sync all
+  !! initialize the simulation information in 'sim' structure
+  sim%nplocal=0 ! local (on this image) CDM particle number
+  sim%nplocal_nu=0 ! local neutrino particle number
+  sim%a=1./(1+z_checkpoint(cur_checkpoint)) ! scale factor of the universe
+  sim%t=0 ! time
+  sim%tau=0 ! conformal time
 
-  sim%nplocal=0
-  sim%nplocal_nu=0
-  sim%a=1./(1+z_checkpoint(cur_checkpoint))
-  sim%t=0
-  sim%tau=0
+  sim%timestep=0 ! number of timesteps
 
-  sim%timestep=0
+  sim%dt_pp=1000 ! dt constraint from PP force
+  sim%dt_fine=1000 ! dt constraint from fine force
+  sim%dt_coarse=1000 ! dt constraint from coarse force
+  sim%dt_vmax=1000 ! dt constraint from fastest moving CDM particle
+  sim%dt_vmax_nu=1000 ! dt constraint from fastest moving neutrino particle
 
-  sim%dt_pp=1000
-  sim%dt_fine=1000
-  sim%dt_coarse=1000
-  sim%dt_vmax=1000
-  sim%dt_vmax_nu=1000
-
-  sim%cur_checkpoint=0
-  sim%box=box
-  sim%image=image
-  sim%nn=nn
-  sim%nnt=nnt
-  sim%nt=nt
-  sim%ncell=ncell
-  sim%ncb=ncb
-  sim%izipx=izipx
-  sim%izipv=izipv
-  sim%izipx_nu=izipx_nu
+  sim%cur_checkpoint=0 ! current checkpoint
+  sim%box=box ! box size in Mpc/h
+  sim%image=image ! image number
+  sim%nn=nn ! image per (/) dim
+  sim%nnt=nnt ! number of tiles / image / dim
+  sim%nt=nt ! number of coarse grid / tile / dim
+  sim%ncell=ncell ! number of fine cell / coarse cell / dim; always 4
+  sim%ncb=ncb ! buffer depth in coarse cell; always 6
+  sim%izipx=izipx ! integer format for CDM position
+  sim%izipv=izipv ! integer format for CDM velocity
+  sim%izipx_nu=izipx_nu ! neutrino
   sim%izipv_nu=izipv_nu
 
-  sim%h0=h0
+  sim%h0=h0 ! Hubble
   sim%omega_m=omega_m
   sim%omega_l=omega_l
-  sim%s8=s8
-  sim%vsim2phys=(150./sim%a)*box*sqrt(omega_m)/nf_global
-  sim%z_i=z_checkpoint(cur_checkpoint)
-  sim%z_i_nu=z_i_nu
+  sim%s8=s8 ! sigma_8
+  sim%vsim2phys=(150./sim%a)*box*sqrt(omega_m)/nf_global ! velocity unit
+  sim%z_i=z_checkpoint(cur_checkpoint) ! initial redshift
+  sim%z_i_nu=z_i_nu ! initial neutrino redshift
   sync all
   phi=0
   tf=0
@@ -193,7 +147,7 @@ program initial_conditions
   if (head) print*,'Transfer function'
   call system_clock(t1,t_rate)
 #ifdef sigma_8
-  open(11,file='../../tf/ith2_mnu0p05_z5_tk.dat',form='formatted')
+  open(11,file='../../tf/ith2_mnu0p05_z5_tk.dat',form='formatted') ! read in transfer function
   !open(11,file='../tf/nu100_onu3/nu100_onu3_transfer_out_z10.dat',form='formatted')
   !open(11,file='../configs/mmh_transfer/simtransfer_bao.dat',form='formatted') ! for Xin
   read(11,*) tf
@@ -216,12 +170,13 @@ program initial_conditions
   enddo
   tf(4,nk)=tf(1,nk)-tf(1,nk-1)
   v8=0
-  kmax=2*pi*sqrt(3.)*nyquest/box
+  kmax=2*pi*sqrt(3.)*nyquist/box
   do k=1,nk
     if (tf(1,k)>kmax) exit
     v8=v8+tf(2,k)*tophat(tf(1,k)*8)**2*tf(4,k)/tf(1,k)
   enddo
-  if (head) print*, 's8**2/v8:', v8, s8**2/v8,nyquest
+  if (head) print*, 's8**2/v8:', v8, s8**2/v8,nyquist
+  ! normalize according to sigma_8
   tf(2:3,:)=tf(2:3,:)*(s8**2/v8)*Dgrow(sim%a)**2
   !tf(2:3,:)=tf(2:3,:)*(s8**2/v8)
   !tf(2,:)=tf(6,:)*(s8**2/v8)*DgrowRatio(z_i,z_tf)**2 ! T_cb rather than T_c
@@ -229,6 +184,7 @@ program initial_conditions
   sync all
 
 #else
+  ! use A_s (power spectrum amplitude directly) instead of sigma_8
   ! remark: requires "CLASS" format for tf ("CAMB"="CLASS"/(-k^2) with k in 1/Mpc)
   open(11,file='../../tf/caf_z10_tk.dat',form='formatted')
   read(11,*) !header
@@ -247,7 +203,7 @@ program initial_conditions
   ! noisemap -------------------------------------
   if (head) print*,''
   if (head) print*,'Generating random noise'
-  call random_seed(size=seedsize)
+  call random_seed(size=seedsize) ! generate random seed
   if (head) print*,'  min seedsize =', seedsize
   seedsize=max(seedsize,12)
   allocate(iseed(seedsize))
@@ -269,7 +225,7 @@ program initial_conditions
       !print*,'time64,iseed(',int(i,1),')=',time64,iseed(i)
     enddo
     ! Input iseed to system
-    call random_seed(put=iseed)
+    call random_seed(put=iseed) ! generate random seed
     !print*, 'iseed', iseed
     ! Write iseed into file
     open(11,file=output_dir()//'seed'//output_suffix(),status='replace',access='stream')
@@ -279,7 +235,7 @@ program initial_conditions
     !call system('cp ../output/universe1/image*/seed* ../configs/')
 #endif
 
-  call random_number(r3)
+  call random_number(r3) ! generate random numbers ! r3 is defined in pencil_fft ! tophat [0,1) distribution
   deallocate(iseed)
   deallocate(rseed_all)
   sync all
@@ -290,13 +246,14 @@ program initial_conditions
     print*, '  READ IN NOISE MAP:', r3(1,1,1), r3(ng,ng,ng)
 # else
     open(11,file=output_dir()//'noise'//output_suffix(),status='replace',access='stream')
-    write(11) r3
+    write(11) r3 ! write random numbers into a file
     close(11)
     print*, '  noise',int(image,1),r3(1:2,1,1)
 # endif
   sync all
 
   ! Box-Muller transform ----------------------------------------------
+  ! convert to standard Normal (Gaussian) distribution
   if (head) print*,'  Box-Muller transform'
   !$omp paralleldo&
   !$omp& default(shared) &
@@ -317,142 +274,87 @@ program initial_conditions
   if (head) print*, '  elapsed time =',real(t2-t1)/t_rate,'secs';
 
   ! delta_field ----------------------------------------------------
+  ! apply transfer function in Fourier space (Wiener filter) and get delta_L
   if (head) print*, ''
-  if (head) print*, 'Delta field'
+  if (head) print*, 'delta field'
   call system_clock(t1,t_rate)
   if (head) print*, '  ftran'
-  call pencil_fft_forward
+  call pencil_fft_forward ! Fourier transform ! transforms r3 to cxyz
   if (head) print*, '  Wiener filter'
   !$omp paralleldo&
   !$omp& default(shared) &
   !$omp& private(k,j,i,kg,jg,ig,kz,ky,kx,kr,pow)
   do k=1,npen
   do j=1,nf
-  do i=1,nyquest+1
+  do i=1,nyquist+1
     ! global grid in Fourier space for i,j,k
     kg=(nn*(icz-1)+icy-1)*npen+k
     jg=(icx-1)*nf+j
     ig=i
-    kz=mod(kg+nyquest-1,nf_global)-nyquest
-    ky=mod(jg+nyquest-1,nf_global)-nyquest
+    kz=mod(kg+nyquist-1,nf_global)-nyquist
+    ky=mod(jg+nyquist-1,nf_global)-nyquist
     kx=ig-1
-    kr=sqrt(kx**2+ky**2+kz**2)
-    kr=max(kr,1.0)
+    kr=sqrt(kx**2+ky**2+kz**2) ! kr is |k_n|
+    kr=max(kr,1.0) ! avoid zero
     !pow=interp_tf(2*pi*kr/box,1,2)/(4*pi*kr**3)
     !cxyz(i,j,k)=cxyz(i,j,k)*sqrt(pow*nf_global*nf_global*nf_global)
     cxyz(i,j,k)=cxyz(i,j,k)*sqrt(interp_tf(2*pi*kr/box,1,2)/(4*pi)*(nf_global/kr))*(nf_global/kr)
-    if (kr==1) then
-      print*,cxyz(i,j,k)
-    endif
   enddo
   enddo
   enddo
   !$omp endparalleldo
-
-#ifdef delta_small
-  print*, 'replace cxyz with the center part of cxyz_r'
-  allocate(cxyz_r(nr/2+1,nr,nr))
-  open(11,file=file_deltak,status='old',access='stream')
-  read(11) cxyz_r
-  cxyz(:ng/2+1,:ng/2+1,:ng/2+1)=cxyz_r(:ng/2+1,:ng/2+1,:ng/2+1)
-  cxyz(:ng/2+1,ng/2+2:,:ng/2+1)=cxyz_r(:ng/2+1,nr-ng/2+2:,:ng/2+1)
-  cxyz(:ng/2+1,:ng/2+1,ng/2+2:)=cxyz_r(:ng/2+1,:ng/2+1,nr-ng/2+2:)
-  cxyz(:ng/2+1,ng/2+2:,ng/2+2:)=cxyz_r(:ng/2+1,nr-ng/2+2:,nr-ng/2+2:)
-  close(11)
-  deallocate(cxyz_r)
-  cxyz=cxyz*ng*ng*ng*Dgrow(sim%a)
-#endif
-
-#ifdef delta_big
-  print*, 'replace the center part of cxyz with cxyz_r'
-  allocate(cxyz_r(nr/2+1,nr,nr))
-  open(11,file=file_deltak,status='old',access='stream')
-  read(11) cxyz_r
-  cxyz_r=cxyz_r*ng*ng*ng*Dgrow(sim%a)
-  cxyz(:nr/2,:nr/2,:nr/2)=cxyz_r(:nr/2,:nr/2,:nr/2)
-  cxyz(:nr/2,ng-nr/2+2:,:nr/2)=cxyz_r(:nr/2,nr/2+2:,:nr/2+1)
-  cxyz(:nr/2,:nr/2,ng-nr/2+2:)=cxyz_r(:nr/2,:nr/2+1,nr/2+2:)
-  cxyz(:nr/2,ng-nr/2+2:,ng-nr/2+2:)=cxyz_r(:nr/2,nr/2+2:,nr/2+2:)
-  close(11)
-  deallocate(cxyz_r)
-#endif
-
-#ifdef IniC_E
-  print*,'use delta_E'
-  open(11,file='/mnt/raid-cita/haoran/CUBEnu/output/universe16/image1/0.000_delta_E_1.bin',access='stream')
-  read(11) r3
-  close(11); sync all
-  r3=r3*Dgrow(sim%a)
-  call pencil_fft_forward
-#endif
-
-#ifdef READ_RECO
-  open(11,file='/home/yuyu22/0.000_recon_1.bin',access='stream')
-  read(11) r3
-  close(11)
-  r3=r3*Dgrow(sim%a)
-  call pencil_fft_forward
-#endif
-
-
-  if (head) cxyz(1,1,1)=0 ! DC frequency
+  if (head) cxyz(1,1,1)=0 ! zero frequency
   sync all
-  delta_k=cxyz ! backup k-space delta_L
+  delta_k=cxyz ! backup (Fourier) k-space delta_L
 
   if (head) print*,'  btran'
-  call pencil_fft_backward
+  call pencil_fft_backward ! inverse Fourier transform ! transforms cxyz to r3
   print*,'  delta_L',r3(1:4,1,1)
   print*,'  rms of delta',sqrt(sum(r3**2*1.d0)/nf_global/nf_global/nf_global)
 
   if (head) print*,'  write delta_L into file'
-  if (head) print*,'  growth factor Dgrow(',sim%a,') =',Dgrow(sim%a)
-print*,r3(1:4,1,1)
-print*,Dgrow(sim%a)
-print*,r3(1:4,1,1)/Dgrow(sim%a)
+  if (head) print*,'  growth factor Dgrow(',sim%a,') =',Dgrow(sim%a) ! growth factor
+
   open(11,file=output_dir()//'delta_L'//output_suffix(),status='replace',access='stream')
-!  r3=r3/Dgrow(sim%a)
   do i=1,ng
-    write(11) r3(:,:,i)/Dgrow(sim%a)
+    write(11) r3(:,:,i)/Dgrow(sim%a) ! write layer by layer to avoid bug
   enddo
-!  write(11) r3
   close(11); sync all
 
-  open(11,file=output_dir()//'delta_L_proj'//output_suffix(),status='replace',access='stream')
-  write(11) sum(r3(:,:,:13),dim=3)/13/Dgrow(sim%a)
-  close(11); sync all
   call system_clock(t2,t_rate)
   if (head) print*, '  elapsed time =',real(t2-t1)/t_rate,'secs';
 
   ! Potential field ----------------------------------------------------
+  ! solve Poisson equation in Fourier space to get the gravitational potential
   if (head) print*, ''
   if (head) print*, 'Potential field'
   call system_clock(t1,t_rate)
   !$omp paralleldo&
   !$omp& default(shared) &
   !$omp& private(k,j,i,kg,jg,ig,kz,ky,kx,kr)
-  do k=1,npen
+  do k=1,npen ! construct the potential kernel -1/k
   do j=1,nf
-  do i=1,nyquest+1
+  do i=1,nyquist+1
     kg=(nn*(icz-1)+icy-1)*npen+k
     jg=(icx-1)*nf+j
     ig=i
-    kz=mod(kg+nyquest-1,nf_global)-nyquest
-    ky=mod(jg+nyquest-1,nf_global)-nyquest
+    kz=mod(kg+nyquist-1,nf_global)-nyquist
+    ky=mod(jg+nyquist-1,nf_global)-nyquist
     kx=ig-1
     kz=2*sin(pi*kz/nf_global)
     ky=2*sin(pi*ky/nf_global)
     kx=2*sin(pi*kx/nf_global)
     kr=kx**2+ky**2+kz**2
     kr=max(kr,1.0/nf_global**2) ! avoid kr being 0
-    cxyz(i,j,k)=-4*pi/kr
+    cxyz(i,j,k)=-4*pi/kr ! raw potential kernel
   enddo
   enddo
   enddo
   !$omp endparalleldo
-  if (head) cxyz(1,1,1)=0 ! DC frequency
+  if (head) cxyz(1,1,1)=0 ! zero frequency
   sync all
 
-  if (correct_kernel) then
+  if (correct_kernel) then ! correct the potential kernel ! very technical
     if (head) print*, '  correct kernel'
     call pencil_fft_backward
     temp8=0
@@ -483,9 +385,9 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
       kg=k+nf*(icz-1)
       jg=j+nf*(icy-1)
       ig=i+nf*(icx-1)
-      kx=mod(kg+nyquest-1,nf_global)-nyquest
-      ky=mod(jg+nyquest-1,nf_global)-nyquest
-      kz=mod(ig+nyquest-1,nf_global)-nyquest
+      kx=mod(kg+nyquist-1,nf_global)-nyquist
+      ky=mod(jg+nyquist-1,nf_global)-nyquist
+      kz=mod(ig+nyquist-1,nf_global)-nyquist
       kr=sqrt(kx**2+ky**2+kz**2)
       if (kr>8) then
         r3(i,j,k)=r3(i,j,k)-(phi8+1/8.)
@@ -500,12 +402,11 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
     !$omp endparalleldo
     sync all
     call pencil_fft_forward
+    ! now the potential kernel is in Fourier space
   endif
 
-  ! Complex multiply delta_L with potential kernel
-  cxyz=real(cxyz)*delta_k
-  delta_k=cxyz  ! backup phi(k)
-  call pencil_fft_backward
+  cxyz=real(cxyz)*delta_k ! phi(k) = kernel(k) * delta_L(k)
+  call pencil_fft_backward ! real space phi is stored in r3
 
   phi=0
   phi(1:nf,1:nf,1:nf)=r3 ! phi1
@@ -535,82 +436,6 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
   phi(:,:,nf+1:)=phi(:,:,1:nfb+1)[image1d(icx,icy,ipz)]
   sync all
 
-#ifdef filter_phi
-  cxyz=0
-  do k=1,npen
-  do j=1,nf
-  do i=1,nyquest+1
-    ! global grid in Fourier space for i,j,k
-    kg=(nn*(icz-1)+icy-1)*npen+k
-    jg=(icx-1)*nf+j
-    ig=i
-    kz=mod(kg+nyquest-1,nf_global)-nyquest
-    ky=mod(jg+nyquest-1,nf_global)-nyquest
-    kx=ig-1
-    kr=sqrt(kx**2+ky**2+kz**2)
-    kr=max(kr,1.0)
-    kr=2*pi*kr/box
-    pow=exp(-kr**2*1.8**2/2)**0.25 ! apply E-mode window function
-    cxyz(i,j,k)=delta_k(i,j,k)*pow
-  enddo
-  enddo
-  enddo
-  if (head) cxyz(1,1,1)=0 ! DC frequency
-  call pencil_fft_backward
-  if (head) print*, '  write filtered phi1 into file'
-  if (head) print*, '  ',output_name('phiE1')
-  open(11,file=output_name('phiE1'),status='replace',access='stream')
-  write(11) r3
-  close(11)
-!#   ifdef force_power
-      ! now diff and compute F_x
-!      do k=1,nf
-!      do j=1,nf
-!      do i=1,nf
-!        r3(i,j,k)=-(phi(i+1,j,k)-phi(i-1,j,k))/2
-!      enddo
-!      enddo
-!      enddo
-!      ! compute power spectrum of F_x
-!      call cross_power(xi,r3,r3)
-!      print*, 'called cross_power'
-!      sync all
-!      if (head) then
-!        open(15,file=output_name('power_Fx'),status='replace',access='stream')
-!        write(15) xi
-!        close(15)
-!      endif
-!      print*,'wrote',output_name('power_Fx')
-!      stop
-!#   endif
-
-  cxyz=0
-  do k=1,npen
-  do j=1,nf
-  do i=1,nyquest+1
-    ! global grid in Fourier space for i,j,k
-    kg=(nn*(icz-1)+icy-1)*npen+k
-    jg=(icx-1)*nf+j
-    ig=i
-    kz=mod(kg+nyquest-1,nf_global)-nyquest
-    ky=mod(jg+nyquest-1,nf_global)-nyquest
-    kx=ig-1
-    kr=sqrt(kx**2+ky**2+kz**2)
-    kr=max(kr,1.0)
-    kr=2*pi*kr/box
-    pow=exp(-kr**2*3.0**2/2)**0.25 ! apply E-mode window function
-    cxyz(i,j,k)=delta_k(i,j,k)*pow
-  enddo
-  enddo
-  enddo
-  if (head) cxyz(1,1,1)=0 ! DC frequency
-  call pencil_fft_backward
-  if (head) print*, '  write filtered phi1 into file'
-  if (head) print*, '  ',output_name('phiE2')
-  open(11,file=output_name('phiE2'),status='replace',access='stream')
-  write(11) r3
-  close(11)
-#endif
 
   if (head) print*, '  destroying FFT plans'
   call destroy_penfft_plan
@@ -622,29 +447,30 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
   ! zip checkpoints ------------------------------------------------
   if (head) print*, ''
   if (head) print*, 'zip checkpoints'
-  vf=vfactor(sim%a)
+  vf=vfactor(sim%a) ! velocity factor
   if (head) print*, '  vf =',vf
+  !! maximum gradient of phi
   grad_max(1)=maxval(abs(phi(-nfb:nf+nfb-1,:,:)-phi(-nfb+2:nf+nfb+1,:,:)))
   grad_max(2)=maxval(abs(phi(:,-nfb:nf+nfb-1,:)-phi(:,-nfb+2:nf+nfb+1,:)))
   grad_max(3)=maxval(abs(phi(:,:,-nfb:nf+nfb-1)-phi(:,:,-nfb+2:nf+nfb+1)))
   sync all
-  do i=1,nn**3 ! co_max
+  do i=1,nn**3 ! co_max over images
     grad_max=max(grad_max,grad_max(:)[i])
     sync all
   enddo
   sync all
-  vmax=grad_max/2/(4*pi)*vf
+  vmax=grad_max/2/(4*pi)*vf ! maximum velocity
 
-  sim%dt_vmax=vbuf*20./maxval(abs(vmax))
+  sim%dt_vmax=vbuf*20./maxval(abs(vmax)) ! constrain dt by maximum velocity
   sim%vz_max=vmax(3)
-  nlayer=2*ceiling(grad_max(3)*np_nc/8/pi/ncell)+1
+  nlayer=2*ceiling(grad_max(3)*np_nc/8/pi/ncell)+1 ! for OpenMP
   if (head) then
     print*, '  grad_max',grad_max
     print*, '  max dsp',grad_max/2/(4*pi)
     print*, '  vmax',vmax
     print*, '  vz_max',sim%vz_max
     if (maxval(grad_max)/2/(4*pi)>=nfb) then
-      print*, '  particle dsp > buffer'
+      print*, '  particle dsp > buffer' ! particle might move beyond buffer depth
       print*, maxval(grad_max)/2/(4*pi),nfb
       stop
     endif
@@ -653,6 +479,7 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
   endif
   sync all
 
+  ! velocity conversion as a function of redshift and scale
   open(11,file='../../velocity_conversion/sigmav_z.bin',access='stream')
   read(11) svz
   close(11)
@@ -680,13 +507,13 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
   if (head) print*,''
   if (head) print*, 'Create particles'
   call system_clock(t1,t_rate)
-  open(11,file=output_name('xp'),status='replace',access='stream')
-  open(12,file=output_name('vp'),status='replace',access='stream')
-  open(13,file=output_name('np'),status='replace',access='stream')
-  open(14,file=output_name('vc'),status='replace',access='stream')
+  open(11,file=output_name('xp'),status='replace',access='stream') ! position list
+  open(12,file=output_name('vp'),status='replace',access='stream') ! velocitie list
+  open(13,file=output_name('np'),status='replace',access='stream') ! particle number list (integer density on coarse grid)
+  open(14,file=output_name('vc'),status='replace',access='stream') ! velocity_coarse-grid list
 #ifdef PID
   if (head) print*, '  also create PID'
-  open(15,file=output_name('id'),status='replace',access='stream')
+  open(15,file=output_name('id'),status='replace',access='stream') ! particle ID list
 #endif
 
   if (body_centered_cubic .and. ncell/np_nc/2==0) stop 'ncell/np_nc/2 = 0, unsuitable for body centered cubic'
@@ -694,12 +521,14 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
   vfield=0
   std_vsim_c=0; std_vsim_res=0; std_vsim=0; !np_prev=0
 
-  do itz=1,nnt
+  do itz=1,nnt ! loop tile by tile
   do ity=1,nnt
   do itx=1,nnt
     rhoce=0
     rholocal=0
 
+    ! first loop to create integer number density field "rhoce",
+    ! and coarse velocity field "vfield"
     do ilayer=0,nlayer-1
       !$omp paralleldo default(shared) schedule(static,8)&
       !$omp& private(k,j,i,imove,kk,jj,ii,xq,gradphi,g,vreal)
@@ -714,8 +543,8 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
         gradphi(1)=phi(ii+1,jj,kk)-phi(ii-1,jj,kk)
         gradphi(2)=phi(ii,jj+1,kk)-phi(ii,jj-1,kk)
         gradphi(3)=phi(ii,jj,kk+1)-phi(ii,jj,kk-1)
-        g=ceiling(xq-gradphi/(8*pi*ncell))
-        rhoce(g(1),g(2),g(3))=rhoce(g(1),g(2),g(3))+1
+        g=ceiling(xq-gradphi/(8*pi*ncell)) ! g(1:3) is the grid index
+        rhoce(g(1),g(2),g(3))=rhoce(g(1),g(2),g(3))+1 ! increment in an extended density field
         vreal=-gradphi/(8*pi)*vf
         vfield(:,g(1),g(2),g(3))=vfield(:,g(1),g(2),g(3))+vreal ! record vfield according to real particles
       enddo ! imove
@@ -727,8 +556,10 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
     vfield(1,:,:,:)=vfield(1,:,:,:)/merge(1,rhoce,rhoce==0)
     vfield(2,:,:,:)=vfield(2,:,:,:)/merge(1,rhoce,rhoce==0)
     vfield(3,:,:,:)=vfield(3,:,:,:)/merge(1,rhoce,rhoce==0)
-    call spine_tile(rhoce,idx_ex_r,pp_l,pp_r,ppe_l,ppe_r)
+    call spine_tile(rhoce,idx_ex_r,pp_l,pp_r,ppe_l,ppe_r) ! spine structure to speed up indexing
 
+    ! second loop to create particles, according to rhoce
+    ! also assign vp according to vfield
     do ilayer=0,nlayer-1
       !$omp paralleldo default(shared) schedule(static,8)&
       !$omp& private(k,j,i,imove,kk,jj,ii,xq,gradphi,g,idx,vreal,iq)
@@ -744,13 +575,14 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
         gradphi(2)=phi(ii,jj+1,kk)-phi(ii,jj-1,kk)
         gradphi(3)=phi(ii,jj,kk+1)-phi(ii,jj,kk-1)
         g=ceiling(xq-gradphi/(8*pi*ncell))
-        rholocal(g(1),g(2),g(3))=rholocal(g(1),g(2),g(3))+1
+        rholocal(g(1),g(2),g(3))=rholocal(g(1),g(2),g(3))+1 ! number of particles have been written in the current coarse cell
         idx=idx_ex_r(g(2),g(3))-sum(rhoce(g(1):,g(2),g(3)))+rholocal(g(1),g(2),g(3))
         xp(:,idx)=floor((xq-gradphi/(8*pi*ncell))/x_resolution,kind=8)
         vreal=-gradphi/(8*pi)*vf
         vreal=vreal-vfield(:,g(1),g(2),g(3)) ! save relative velocity
         vp(:,idx)=nint(real(nvbin-1)*atan(sqrt(pi/2)/(sim%sigma_vi*vrel_boost)*vreal)/pi,kind=izipv)
 #       ifdef PID
+          !! particle IDs are unique according to their Lagrangian positions, not necessarily consecutive
           iq = ((/icx,icy,icz/)-1)*nf + ((/itx,ity,itz/)-1)*nft + (ncell/np_nc)*((/i,j,k/)-1)+imove
           iq = modulo(iq,nf_global)
           pid(idx)=iq(1)+nf_global*iq(2)+nf_global**2*iq(3)+1
@@ -860,12 +692,9 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
       print*, 'warning: incorrect npglobal'
     endif
   endif
-  sim%mass_p_cdm=real(f_cdm*nf_global**3,kind=8)/sim%npglobal
+  sim%mass_p_cdm=real(f_cdm*nf_global**3,kind=8)/sim%npglobal ! particle mass in unit of fine cell
   sim%mass_p_nu=real(f_nu*nf_global**3,kind=8)/sim%npglobal_nu
 
-#ifdef onehalo
-  sim%mass_p_cdm=4
-#endif
   call print_header(sim)
 
   sync all
@@ -909,7 +738,7 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
     interp_sigmav=term_z*term_r
   endfunction
 
-  real function interp_tf(kr,ix,iy)
+  real function interp_tf(kr,ix,iy) ! interpolation in log space
     implicit none
     integer(4) ix,iy
     integer(8) ii,i1,i2
@@ -945,7 +774,7 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
     tophat=merge(1.,3*(sin(x)-cos(x)*x)/x**3,x==0)
   endfunction tophat
 
-  function Dgrow(a)
+  function Dgrow(a) ! growth function
     implicit none
     real, parameter :: om=omega_m
     real, parameter :: ol=omega_l
@@ -998,7 +827,7 @@ print*,r3(1:4,1,1)/Dgrow(sim%a)
     vfactor=vfactor*np!(1.-3.*(omega_nu/omega_m)/5.)
   endfunction vfactor
 
-  function lcg(s) !// Linear congruential generator
+  function lcg(s) ! Linear congruential generator
     implicit none
     integer(4) :: lcg
     integer(int64) :: s
