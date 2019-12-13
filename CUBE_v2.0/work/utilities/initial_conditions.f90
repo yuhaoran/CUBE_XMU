@@ -1,7 +1,7 @@
 !! use simga_8 to specify the power spectrum amplitude
 #define sigma_8
 !! read existing random seed to generate random numbers
-#define READ_SEED
+!#define READ_SEED
 !! read same random noise to generate same initial conditions
 !#define READ_NOISE
 
