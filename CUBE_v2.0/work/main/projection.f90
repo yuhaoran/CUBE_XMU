@@ -1,4 +1,4 @@
-#define proj3d
+!#define proj3d
 ! single node, fine cell, NGP projection
 subroutine projection
   use variables
@@ -49,11 +49,11 @@ subroutine projection
   enddo
   enddo
   sync all
-
+#ifdef proj3d
   open(11,file=output_name('den'),status='replace',access='stream')
   write(11) den
   close(11)
-
+#endif
 
   !open(11,file='./output/proj_yz.dat',status='replace',access='stream')
   !write(11) proj_yz

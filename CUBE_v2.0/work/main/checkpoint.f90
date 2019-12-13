@@ -24,9 +24,6 @@ subroutine checkpoint
   sim%a=a
   sim%t=t
   sim%tau=tau
-
-  sim%cur_checkpoint=cur_checkpoint
-
   sim%vsim2phys=(1.5/a)*box*100.*sqrt(omega_m)/nf_global
   sim%sigma_vi=sigma_vi
   sim%sigma_vi_nu=sigma_vi_nu
@@ -49,7 +46,7 @@ subroutine checkpoint
     print*, 'check PID range:',minval(pid(:sim%nplocal)),maxval(pid(:sim%nplocal))
     if (minval(pid(:sim%nplocal))<1) then
       print*, 'pid are not all positive'
-      
+
     endif
 # endif
   !$omp endparallelsections
@@ -82,8 +79,8 @@ subroutine checkpoint
 
 
 
-  if (cur_checkpoint==n_checkpoint_neu) then
-    print*, cur_checkpoint, n_checkpoint_neu
+  if (sim%cur_checkpoint==n_checkpoint_neu) then
+    print*, sim%cur_checkpoint, n_checkpoint_neu
     print*, 'turn neutrino_flag on'
     neutrino_flag=.true.
     !sim%mass_p_cdm=real((nf*nn)**3*f_cdm)/sim%npglobal

@@ -41,8 +41,8 @@ subroutine initialize
   dt=0
   dt_old=0
   da=0
-  cur_checkpoint=1 ! change for resuming checkpoints
-  cur_halofind=1
+  sim%cur_checkpoint=1 ! change for resuming checkpoints
+  sim%cur_halofind=1
   z_checkpoint=-0.5
   z_checkpoint=-0.5
   checkpoint_step=.false.
@@ -67,7 +67,7 @@ subroutine initialize
     n_halofind=n_halofind[1]
     z_halofind(:)=z_halofind(:)[1]
 # endif
-  tau=-3/sqrt(1./(1+z_checkpoint(cur_checkpoint)))
+  tau=-3/sqrt(1./(1+z_checkpoint(sim%cur_checkpoint)))
   sync all
   n_checkpoint=n_checkpoint[1]
   z_checkpoint(:)=z_checkpoint(:)[1]

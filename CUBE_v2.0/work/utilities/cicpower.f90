@@ -16,14 +16,17 @@ program cicpower
   real,parameter :: density_buffer=1.2
   integer(8) i,j,k,l,i_dim,iq(3),nplocal,nplocal_nu,itx,ity,itz
   integer(8) nlast,ip,np,idx1(3),idx2(3)
+  integer cur_checkpoint
 
-  real(4) rho_grid(0:ng+1,0:ng+1,0:ng+1)[*]
-  real(4) rho_c(ng,ng,ng),rho_nu(ng,ng,ng)
+  !real(4) rho_grid(0:ng+1,0:ng+1,0:ng+1)[*]
+  !real(4) rho_c(ng,ng,ng),rho_nu(ng,ng,ng)
+  real,allocatable :: rho_grid(:,:,:)[:],rho_c(:,:,:),rho_nu(:,:,:)
   real(4) mass_p,pos1(3),dx1(3),dx2(3)
   real(8) rho8[*]
 
   integer(izipx),allocatable :: xp(:,:)
-  integer(4) rhoc(nt,nt,nt,nnt,nnt,nnt)
+  !integer(4) rhoc(nt,nt,nt,nnt,nnt,nnt)
+  integer(4),allocatable :: rhoc(:,:,:,:,:,:)
 
   real xi(10,nbin)[*]
   character(20) str_z,str_i
@@ -34,6 +37,10 @@ program cicpower
     print*, 'ng*nn=',ng*nn
   endif
   sync all
+
+  allocate(rho_grid(0:ng+1,0:ng+1,0:ng+1)[*])
+  allocate(rho_c(ng,ng,ng),rho_nu(ng,ng,ng))
+  allocate(rhoc(nt,nt,nt,nnt,nnt,nnt))
 
   if (head) then
     print*, 'checkpoint at:'
@@ -55,10 +62,12 @@ program cicpower
   call create_penfft_plan
 
   do cur_checkpoint= n_checkpoint,1,-1
+    sim%cur_checkpoint=cur_checkpoint
+
     if (head) print*, 'Start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
 
     !call particle_initialization
-
+    print*,output_name('info')
     open(11,file=output_name('info'),status='old',action='read',access='stream')
     read(11) sim
     close(11)
@@ -211,6 +220,7 @@ program cicpower
 #endif
 
   enddo
+  deallocate(rho_c,rho_nu,rho_grid,rhoc)
   call destroy_penfft_plan
   sync all
   if (head) print*,'cicpower done'

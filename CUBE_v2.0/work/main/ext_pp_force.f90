@@ -14,8 +14,10 @@ subroutine ext_pp_force
 
   integer ilayer
   integer(8) ntest,ip_offset,ipll1,ipll2,it1,it2
-  integer hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell)
-  integer ll(np_pp_max),idxf,ipf(np_pp_max),ift1(np_pp_max/800),ipp1,ipp2
+  !integer hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell)
+  !integer ll(np_pp_max)
+  integer,allocatable :: ll(:),hoc(:,:,:)
+  integer idxf,ipf(np_pp_max),ift1(np_pp_max/800),ipp1,ipp2
   real xf(3,np_pp_max),vf(3,np_pp_max),af(3,np_pp_max)
   real ftemp
 
@@ -31,7 +33,7 @@ subroutine ext_pp_force
   endif
   nth=omp_get_max_threads()
   print*,'  max num_threads =',nth
-
+  allocate(ll(np_pp_max),hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell))
 
   if (pp_range==1) then
     ncellpp=13
@@ -201,6 +203,7 @@ subroutine ext_pp_force
   enddo
   sync all
 
+  deallocate(ll,hoc)
 
   if (head) then
     call system_clock(tt2,t_rate)

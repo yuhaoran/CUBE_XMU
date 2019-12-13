@@ -1,7 +1,7 @@
 !! use simga_8 to specify the power spectrum amplitude
 #define sigma_8
 !! read existing random seed to generate random numbers
-!#define READ_SEED
+#define READ_SEED
 !! read same random noise to generate same initial conditions
 !#define READ_NOISE
 
@@ -37,23 +37,30 @@ program initial_conditions
   integer(4),allocatable :: iseed(:)
   real,allocatable :: rseed_all(:,:)
 
-  complex delta_k(nyquist+1,nf,npen) !! delta(k) in Fourier space
-  real phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*] !! gravitational potential in real space, with buffers
+  !complex delta_k(nyquist+1,nf,npen) !! delta(k) in Fourier space
+  complex,allocatable :: delta_k(:,:,:)
+  !real phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*] !! gravitational potential in real space, with buffers
+  real,allocatable :: phi(:,:,:)[:]
 
   !! zip format arrays
   integer(8),parameter :: npt=nt*np_nc ! np (number of particle) / tile / dimension (dim)
   integer(8),parameter :: npb=ncb*np_nc ! np / buffer depth
   integer(8),parameter :: npmax=2*(npt+2*npb)**3 ! maximum np in memory
-  integer(4) rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! rho_coarse_extended(with buffer)
+  !integer(4) rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! rho_coarse_extended(with buffer)
+  integer(4),allocatable :: rhoce(:,:,:)
   integer(1) rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! auxilary rhoce for counting particles  ! very technical
-  real(4) vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! coarse grid velocity field (with buffer)
+  !real(4) vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! coarse grid velocity field (with buffer)
+  real(4),allocatable :: vfield(:,:,:,:)
   integer(8) idx_ex_r(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! index_extended_rhs ! very technical
   integer(8),dimension(nt,nt) :: pp_l,pp_r,ppe_l,ppe_r ! for particle index ! very technical
 
-  integer(izipx) xp(3,npmax) ! integer-based particle positions, izipx = 1 or 2
-  integer(izipv) vp(3,npmax) ! integer-based particle velocities, izipv = 1 or 2
+  !integer(izipx) xp(3,npmax) ! integer-based particle positions, izipx = 1 or 2
+  !integer(izipv) vp(3,npmax) ! integer-based particle velocities, izipv = 1 or 2
+  integer(izipx),allocatable :: xp(:,:)
+  integer(izipv),allocatable :: vp(:,:)
 #ifdef PID
-    integer(4) pid(npmax) ! particle ID (tag), if np>2^31, use integer(8) for pid
+    !integer(4) pid(npmax) ! particle ID (tag), if np>2^31, use integer(8) for pid
+    integer(4),allocatable :: pid(:)
 #endif
   real grad_max(3)[*],vmax(3),vf ! max of gradient of phi; max velocity; velocity factor
   real(4) svz(500,2),svr(100,2) ! for velocity conversion between integers and reals
@@ -66,9 +73,9 @@ program initial_conditions
   call geometry !! initialize some basic variables and parameters
   call system('mkdir -p '//opath//'image'//image2str(image)) !! create output directory
 
-  cur_checkpoint=1 !! set current checkpoint to 1
+  sim%cur_checkpoint=1 !! set current checkpoint to 1
   open(16,file='../main/z_checkpoint.txt',status='old') !! open redshift list to do checkpoint
-  read(16,fmt='(f8.4)') z_checkpoint(cur_checkpoint)
+  read(16,fmt='(f8.4)') z_checkpoint(sim%cur_checkpoint)
   close(16)
 
   if (head) then
@@ -76,7 +83,7 @@ program initial_conditions
     print*, 'CUBE Initial Conditions'
     print*, 'on',nn**3,' images'
     print*, 'Resolution', ng*nn
-    print*, 'at redshift=',z_checkpoint(cur_checkpoint)
+    print*, 'at redshift=',z_checkpoint(sim%cur_checkpoint)
     if (body_centered_cubic) then
       print*, 'To genterate npglobal = 2 x', int(np_nc*nc*nn,2),'^3'
     else
@@ -93,11 +100,20 @@ program initial_conditions
     call system('cp ../main/z_*.txt '//opath//'code/')
   endif
 
+  allocate(phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*])
+  allocate(vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
+  allocate(rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
+  allocate(xp(3,npmax),vp(3,npmax))
+  allocate(delta_k(nyquist+1,nf,npen))
+#ifdef PID
+  allocate(pid(npmax))
+#endif
+
   sync all
   !! initialize the simulation information in 'sim' structure
   sim%nplocal=0 ! local (on this image) CDM particle number
   sim%nplocal_nu=0 ! local neutrino particle number
-  sim%a=1./(1+z_checkpoint(cur_checkpoint)) ! scale factor of the universe
+  sim%a=1./(1+z_checkpoint(sim%cur_checkpoint)) ! scale factor of the universe
   sim%t=0 ! time
   sim%tau=0 ! conformal time
 
@@ -109,7 +125,7 @@ program initial_conditions
   sim%dt_vmax=1000 ! dt constraint from fastest moving CDM particle
   sim%dt_vmax_nu=1000 ! dt constraint from fastest moving neutrino particle
 
-  sim%cur_checkpoint=0 ! current checkpoint
+  sim%cur_checkpoint=1 ! current checkpoint
   sim%box=box ! box size in Mpc/h
   sim%image=image ! image number
   sim%nn=nn ! image per (/) dim
@@ -127,7 +143,7 @@ program initial_conditions
   sim%omega_l=omega_l
   sim%s8=s8 ! sigma_8
   sim%vsim2phys=(150./sim%a)*box*sqrt(omega_m)/nf_global ! velocity unit
-  sim%z_i=z_checkpoint(cur_checkpoint) ! initial redshift
+  sim%z_i=z_checkpoint(sim%cur_checkpoint) ! initial redshift
   sim%z_i_nu=z_i_nu ! initial neutrino redshift
   sync all
   phi=0
@@ -294,6 +310,11 @@ program initial_conditions
     kz=mod(kg+nyquist-1,nf_global)-nyquist
     ky=mod(jg+nyquist-1,nf_global)-nyquist
     kx=ig-1
+
+    ! GW phase transition
+    kx=(1+0.25)*kx
+    ky=(1-0.25)*ky
+
     kr=sqrt(kx**2+ky**2+kz**2) ! kr is |k_n|
     kr=max(kr,1.0) ! avoid zero
     !pow=interp_tf(2*pi*kr/box,1,2)/(4*pi*kr**3)

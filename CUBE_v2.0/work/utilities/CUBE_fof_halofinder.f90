@@ -26,12 +26,12 @@ program CUBE_FoF
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nc*4 ! nfof is the resolution to do percolation
   real,parameter :: b_link=0.2 ! linking length
-  real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
+  real,parameter :: np_halo_min=30 ! minimum number of particles to be a halo
 
   type(type_halo_catalog_header) halo_header !! halo catalog header
   type(type_halo_cat_array),allocatable :: hcat(:) !! halo catalog array
 
-  integer np_iso,np_mem,np_head
+  integer np_iso,np_mem,np_head,cur_checkpoint
   integer i,j,k,l,itx,ity,itz,nlast,ip,jp,np,nplocal,nlist,idx(3),n_friend,ngroup,ihalo,nhalo
   integer iq1,iq2,iq3,np_candidate,np_central,pbc(3),jq(3),is1,is2,is3
   integer(4) t1,t2,tt1,tt2,ttt1,ttt2,t_rate
@@ -74,6 +74,7 @@ program CUBE_FoF
   sync all
 
   do cur_checkpoint= n_checkpoint,n_checkpoint
+    sim%cur_checkpoint=cur_checkpoint
     print*, 'start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
     print*, '  read checkpoint header',output_name('info')
     ! read CUBE checkpoint

@@ -39,18 +39,18 @@ subroutine timestep
     checkpoint_step=.false.
     halofind_step=.false.
 #   ifdef HALOFIND
-      z_next=max(z_checkpoint(cur_checkpoint),z_halofind(cur_halofind))
+      z_next=max(z_checkpoint(sim%cur_checkpoint),z_halofind(sim%cur_halofind))
 #   else
-      z_next=z_checkpoint(cur_checkpoint)
+      z_next=z_checkpoint(sim%cur_checkpoint)
 #   endif
     a_next=1.0/(1+z_next)
     if (da>=a_next-a) then
-      if (z_next==z_checkpoint(cur_checkpoint)) then
+      if (z_next==z_checkpoint(sim%cur_checkpoint)) then
         checkpoint_step=.true.
-        if (cur_checkpoint==n_checkpoint) final_step=.true.
+        if (sim%cur_checkpoint==n_checkpoint) final_step=.true.
       endif
 #   ifdef HALOFIND
-      if (z_next==z_halofind(cur_halofind)) halofind_step=.true.
+      if (z_next==z_halofind(sim%cur_halofind)) halofind_step=.true.
 #   endif
       do while (abs((a+da)/a_next-1)>=1e-6)
         dt=dt*(a_next-a)/da

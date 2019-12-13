@@ -2,7 +2,7 @@ module parameters
   implicit none
   save
   ! output directory
-  character(*),parameter :: opath='../../output/universe1/'
+  character(*),parameter :: opath='../../output/universe3/'
 
   ! simulation parameters
   integer(8),parameter :: izipx=2 ! size to store xp as
@@ -22,11 +22,11 @@ module parameters
   ! (hereafter 'number of coarse cells' = 'nc')
   ! (hereafter 'per dimension' = '/dim')
   integer(8),parameter :: nn=1 ! number of imgages (nodes) /dim
-  integer(8),parameter :: ncore=4
+  integer(8),parameter :: ncore=12
   integer(8),parameter :: n_nest=1 ! number of nested threads
   integer(8),parameter :: ncell=4 ! number of nf in each nc, /dim
   integer(8),parameter :: nnt=2 ! number of tiles /image/dim
-  integer(8),parameter :: nc=32 ! nc/image/dim, in physical volume, >=24
+  integer(8),parameter :: nc=128 ! nc/image/dim, in physical volume, >=24
   integer(8),parameter :: nt=nc/nnt ! nc/tile/dim, in physical volume, >=12
 
   integer(8),parameter :: nf=nc*ncell ! >=96
@@ -54,7 +54,7 @@ module parameters
   integer(8),parameter :: nfe=nft+2*nfb ! 96
 
   logical,parameter :: body_centered_cubic=.false.
-  integer(8),parameter :: np_nc=ncell/2 ! number of particles / coarse cell / dim
+  integer(8),parameter :: np_nc=ncell ! number of particles / coarse cell / dim
   integer, parameter :: np_nc_nu = ncell/2 ! number of neutrinos per dim per coarse cell
 
   logical,parameter :: Extended_pp_force=.false.
@@ -67,7 +67,7 @@ module parameters
   real,parameter :: pi=4*atan(1.)
 
   ! cosmological parameters
-  real,parameter :: box=200*nn  ! simulation scale /dim, in unit of Mpc/h
+  real,parameter :: box=400*nn  ! simulation scale /dim, in unit of Mpc/h
   real,parameter :: s8=0.8 ! use -Dsigma_8 in initial_conditions
   integer,parameter :: zdim=2 ! the dimension being the redhisft direction
 
@@ -129,8 +129,7 @@ module parameters
   logical head
   ! checkpoint variables
   integer(8),parameter :: nmax_redshift=1000
-  integer(8) cur_checkpoint,n_checkpoint[*]
-  integer(8) cur_halofind,n_halofind[*]
+  integer(8) n_checkpoint[*],n_halofind[*]
   real z_checkpoint(nmax_redshift)[*],z_halofind(nmax_redshift)[*]
   logical checkpoint_step[*],halofind_step[*],final_step[*]
 

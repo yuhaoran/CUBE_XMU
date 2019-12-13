@@ -1,6 +1,6 @@
 !! add -DRECONSTRUCTION to compute delta_E from dsp
 #define Emode
-#define potential
+!#define potential
 !#define RSD
 program displacement
   use parameters
@@ -12,18 +12,24 @@ program displacement
   ! nc: coarse grid per node per dim
   ! nf: fine grid per node per dim
   integer(8) i,j,k,l,i_dim,iq(3),pid8,itx,ity,itz,nlast,ip,np
-  integer(4) rhoc(nt,nt,nt,nnt,nnt,nnt),rhoc0(nt,nt,nt,nnt,nnt,nnt)
-  integer(1) rho0(ng,ng,ng) !!!! for checking there is one and only one particle per fine grid
+  integer cur_checkpoint
+  !integer(4) rhoc(nt,nt,nt,nnt,nnt,nnt),rhoc0(nt,nt,nt,nnt,nnt,nnt)
+  !integer(1) rho0(ng,ng,ng) !!!! for checking there is one and only one particle per fine grid
+  integer(4),allocatable :: rhoc(:,:,:,:,:,:),rhoc0(:,:,:,:,:,:)
+  integer(1),allocatable :: rho0(:,:,:)
   real dsp(3,ng,ng,ng),pos0(3),pos1(3),dpos(3),pow,zshift
-  real(4) vc(3,nt,nt,nt,nnt,nnt,nnt)
+  !real(4) vc(3,nt,nt,nt,nnt,nnt,nnt)
+  real,allocatable :: vc(:,:,:,:,:,:,:)
   integer(izipx),allocatable :: xp(:,:)
   integer(izipv),allocatable :: vp(:,:)
   integer(4),allocatable :: pid(:)
 
 #ifdef Emode
   integer dim_1,dim_2,dim_3,ig,jg,kg
-  real kr,kx(3),cube1(ng,ng,ng),cube0(ng,ng,ng),xi(10,nbin)[*]
-  complex ekx(3),cdiv(ng*nn/2+1,ng,npen),pdim
+  real kr,kx(3),xi(10,nbin)[*]
+  complex ekx(3),pdim
+  real,allocatable :: cube1(:,:,:),cube0(:,:,:)
+  complex,allocatable :: cdiv(:,:,:)
 #endif
 
 #ifdef dspE
@@ -54,6 +60,8 @@ program displacement
     close(16)
     print*,''
   endif
+  allocate(rho0(ng,ng,ng),rhoc(nt,nt,nt,nnt,nnt,nnt),rhoc0(nt,nt,nt,nnt,nnt,nnt))
+  allocate(vc(3,nt,nt,nt,nnt,nnt,nnt),cube1(ng,ng,ng),cube0(ng,ng,ng),cdiv(ng*nn/2+1,ng,npen))
   sync all
   n_checkpoint=n_checkpoint[1]
   z_checkpoint(:)=z_checkpoint(:)[1]
@@ -582,6 +590,8 @@ program displacement
 #ifdef Emode
   call destroy_penfft_plan
 #endif
+
+  deallocate(rho0,rhoc,rhoc0,vc)
 
   print*,'displacement done'
 end

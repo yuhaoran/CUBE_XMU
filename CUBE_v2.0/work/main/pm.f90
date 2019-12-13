@@ -24,7 +24,8 @@ integer(4) t01,t02,t0rate
   integer(4) ilayer
   integer(8) idx1(3),idx2(3)
   real tempx(3),dx1(3),dx2(3)
-  real r3t(-1:nt+2,-1:nt+2,-1:nt+2) ! coarse density on tile, with buffer=2
+  !real r3t(-1:nt+2,-1:nt+2,-1:nt+2) ! coarse density on tile, with buffer=2
+  real,allocatable :: r3t(:,:,:)
   real(8) testrhof, testrhoc
   if (head) then
     print*, ''
@@ -149,6 +150,7 @@ integer(4) t01,t02,t0rate
   if (head) print*, '    coarse cic mass'
   call system_clock(t1,t_rate)
   r3=0
+  allocate(r3t(-1:nt+2,-1:nt+2,-1:nt+2))
   do itz=1,nnt
   do ity=1,nnt
   do itx=1,nnt ! loop over tile
@@ -188,6 +190,7 @@ integer(4) t01,t02,t0rate
   enddo
   enddo
   enddo
+  deallocate(r3t)
   testrhoc=sum(r3*1d0)
   call system_clock(t2,t_rate)
   print*, '    elapsed time =',real(t2-t1)/t_rate,'secs';
@@ -306,5 +309,6 @@ integer(4) t01,t02,t0rate
     print*, '  elapsed time =',real(tt2-tt1)/t_rate,'secs'
     print*, ''
   endif
+
   sync all
 endsubroutine

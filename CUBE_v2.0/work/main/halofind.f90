@@ -38,21 +38,28 @@ subroutine halofind
   integer,parameter :: min_halo_particles=100 ! lower mass cutoff for cataloging a halo, in particles
 
   integer i0,j0,k0,l0,idx1(3),idx2(3),irtot
-  integer(1) p_tag(np_image_max)
-  integer(4) ilist_odc(max_halo_np),i_odc,GroupOffset,temp_halo(2,200000)
-  integer idist(3,nlist),isortdist(nlist),idist_tmp(3,nlist),isortpeak(n_peak_max)
-  integer isortpos_odc(max_halo_np)
+  !integer(1) p_tag(np_image_max)
+  integer(1),allocatable :: p_tag(:)
+  integer(4) i_odc,GroupOffset,temp_halo(2,20000)
+  !integer idist(3,nlist),isortdist(nlist),idist_tmp(3,nlist),isortpeak(n_peak_max)
+  integer,allocatable :: idist(:,:),isortdist(:),idist_tmp(:,:),isortpeak(:)
   integer iloc,np_odc,np_search,nptemp,qtemp
   integer crbox(3,2),csbox(3,2),frbox(3,2),itile(3),newbox(3),imax(3)
   real den_odc,d1,d2,r1,r2,w1,w2,den1,den2,dx(3),dv(3),qpos(3),dx_mean(3),qpos_mean(3),inert(3,3)
-  real finegrid(0:newbox_max+1,0:newbox_max+1,0:newbox_max+1)
-  real xv_odc(6,max_halo_np),r_odc(max_halo_np)
-  integer(4) oct(max_halo_np)
-  real dx1(3),dx2(3),pos1(3),rr,rdist(nlist),xflat,den_peak(n_peak_max),ipeak(3,n_peak_max),m_mesh,denmax
+  !real finegrid(0:newbox_max+1,0:newbox_max+1,0:newbox_max+1)
+  real,allocatable :: finegrid(:,:,:)
+  !real xv_odc(6,max_halo_np),r_odc(max_halo_np)
+  real,allocatable :: xv_odc(:,:),r_odc(:)
+  !integer(4) oct(max_halo_np),isortpos_odc(max_halo_np),ilist_odc(max_halo_np)
+  integer,allocatable :: oct(:),isortpos_odc(:),ilist_odc(:)
+  real dx1(3),dx2(3),pos1(3),rr,xflat,m_mesh,denmax
   real hpos(3),mass_proxy,newgrid,r_proxy,rsearch,dr(3)
-  real rhof(1-nfb:nft+nfb,1-nfb:nft+nfb,1-nfb:nft+nfb),halo_mesh_mass(n_peak_max)
+  !real rhof(1-nfb:nft+nfb,1-nfb:nft+nfb,1-nfb:nft+nfb)
+  real,allocatable :: rhof(:,:,:),den_peak(:),ipeak(:,:),rdist(:)
+  real,allocatable :: halo_mesh_mass(:)
+
 #ifdef HID
-  integer(2) hid(nf**3)
+  integer(2),allocatable :: hid(:)
 #endif
 
   real,parameter :: cen(3)=[30,370,370]
@@ -60,6 +67,14 @@ subroutine halofind
 
   if (head) print*, ''
   if (head) print*, 'halofind'
+
+  allocate(rhof(1-nfb:nft+nfb,1-nfb:nft+nfb,1-nfb:nft+nfb))
+  allocate(hid(nc**3/8),p_tag(np_image_max),halo_mesh_mass(n_peak_max))
+  allocate(finegrid(0:newbox_max+1,0:newbox_max+1,0:newbox_max+1))
+  allocate(den_peak(n_peak_max),ipeak(3,n_peak_max),rdist(nlist))
+  allocate(idist(3,nlist),isortdist(nlist),idist_tmp(3,nlist),isortpeak(n_peak_max))
+  allocate(xv_odc(6,max_halo_np),r_odc(max_halo_np))
+  allocate(oct(max_halo_np),isortpos_odc(max_halo_np),ilist_odc(max_halo_np))
 
   ! initialize_halofinder
   ! Loop through a box of length 2*nc_halo_max
@@ -93,8 +108,8 @@ subroutine halofind
   ! Determine which candidates are to be considered halos and write their properties to file.
   if (odc_vir) then
     ! Determine delta_vir using equation (6) of Bryan et al. (1997) for a flat universe
-    print*, 'scale_factor =',1./(1+z_halofind(cur_halofind))
-    a=1./(1+z_halofind(cur_halofind))
+    print*, 'scale_factor =',1./(1+z_halofind(sim%cur_halofind))
+    a=1./(1+z_halofind(sim%cur_halofind))
     xflat=(omega_m/a**3)/(omega_m/a**3+omega_l)-1.
     den_odc=18.*pi**2+82.*xflat-39.*xflat**2
   else
@@ -593,6 +608,9 @@ subroutine halofind
   !write(102) header_halo_tab,0
   !close(102)
 
+  deallocate(rhof,hid,p_tag,finegrid,halo_mesh_mass,den_peak,ipeak)
+  deallocate(idist,isortdist,idist_tmp,isortpeak,rdist,xv_odc,r_odc)
+  deallocate(oct,isortpos_odc,ilist_odc)
   sync all
 
 endsubroutine

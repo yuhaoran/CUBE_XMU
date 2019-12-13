@@ -16,7 +16,7 @@ subroutine particle_initialization
   if (head) then
     print*, ''
     print*, 'particle_initialization'
-    print*, '  at redshift',z_checkpoint(cur_checkpoint)
+    print*, '  at redshift',z_checkpoint(sim%cur_checkpoint)
     call system_clock(t1,t_rate)
   endif
   fn10=output_name('info')
@@ -34,7 +34,7 @@ subroutine particle_initialization
   open(10,file=fn10,status='old',access='stream')
   read(10) sim
   close(10)
-  a=1./(1+z_checkpoint(cur_checkpoint))
+  a=1./(1+z_checkpoint(sim%cur_checkpoint))
   sigma_vi=sim%sigma_vi
   sigma_vi_nu=sim%sigma_vi_nu
 
