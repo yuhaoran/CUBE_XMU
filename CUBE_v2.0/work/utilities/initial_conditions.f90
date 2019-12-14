@@ -48,7 +48,8 @@ program initial_conditions
   integer(8),parameter :: npmax=2*(npt+2*npb)**3 ! maximum np in memory
   !integer(4) rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! rho_coarse_extended(with buffer)
   integer(4),allocatable :: rhoce(:,:,:)
-  integer(1) rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! auxilary rhoce for counting particles  ! very technical
+  !integer(1) rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! auxilary rhoce for counting particles  ! very technical
+  integer(1),allocatable :: rholocal(:,:,:)
   !real(4) vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! coarse grid velocity field (with buffer)
   real(4),allocatable :: vfield(:,:,:,:)
   integer(8) idx_ex_r(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! index_extended_rhs ! very technical
@@ -103,6 +104,7 @@ program initial_conditions
   allocate(phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*])
   allocate(vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
   allocate(rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
+  allocate(rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
   allocate(xp(3,npmax),vp(3,npmax))
   allocate(delta_k(nyquist+1,nf,npen))
 #ifdef PID

@@ -17,8 +17,10 @@ subroutine ext_pp_force
   !integer hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell)
   !integer ll(np_pp_max)
   integer,allocatable :: ll(:),hoc(:,:,:)
-  integer idxf,ipf(np_pp_max),ift1(np_pp_max/800),ipp1,ipp2
-  real xf(3,np_pp_max),vf(3,np_pp_max),af(3,np_pp_max)
+  integer idxf,ipp1,ipp2
+  !real xf(3,np_pp_max),vf(3,np_pp_max),af(3,np_pp_max)
+  integer,allocatable :: ipf(:),ift1(:)
+  real,allocatable :: xf(:,:),vf(:,:),af(:,:)
   real ftemp
 
   integer icellpp,ncellpp,ijk(3,62)
@@ -34,7 +36,7 @@ subroutine ext_pp_force
   nth=omp_get_max_threads()
   print*,'  max num_threads =',nth
   allocate(ll(np_pp_max),hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell))
-
+  allocate(ipf(np_pp_max),ift1(np_pp_max/800),xf(3,np_pp_max),vf(3,np_pp_max),af(3,np_pp_max))
   if (pp_range==1) then
     ncellpp=13
     ijk(:,1)=(/-1,-1,-1/) ! 9 cells in z-
@@ -203,7 +205,7 @@ subroutine ext_pp_force
   enddo
   sync all
 
-  deallocate(ll,hoc)
+  deallocate(ll,hoc,ipf,ift1,xf,vf,af)
 
   if (head) then
     call system_clock(tt2,t_rate)
