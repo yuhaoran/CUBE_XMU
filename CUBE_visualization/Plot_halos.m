@@ -1,7 +1,7 @@
 clear; SetDefault
 global Redshift Redshift_i Universe Path Dir
 Universe='1';
-Redshift_i='20.000';
+Redshift_i='100.000';
 Redshift='0.000';
 Path='../CUBE_v2.0/output/';
 Dir=['universe',Universe,'/image1/'];

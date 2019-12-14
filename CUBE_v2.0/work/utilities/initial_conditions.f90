@@ -314,8 +314,8 @@ program initial_conditions
     kx=ig-1
 
     ! GW phase transition
-    kx=(1+0.25)*kx
-    ky=(1-0.25)*ky
+    !kx=(1+0.25)*kx
+    !ky=(1-0.25)*ky
 
     kr=sqrt(kx**2+ky**2+kz**2) ! kr is |k_n|
     kr=max(kr,1.0) ! avoid zero
