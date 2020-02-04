@@ -12,5 +12,6 @@ make
 
 cd ../utilities/
 ./cicpower.x
+source run_fof.sh
 
 cd ../main/

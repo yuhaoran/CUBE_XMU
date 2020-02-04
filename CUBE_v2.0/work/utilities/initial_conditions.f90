@@ -18,6 +18,7 @@ program initial_conditions
   ! nyquist: nyquist frequency
   logical,parameter :: correct_kernel=.true.
   logical,parameter :: write_potential=.true.
+  logical,parameter :: write_phik=.true.
 
 #ifdef sigma_8
   integer(8),parameter :: nk=1000 ! transfer function length
@@ -429,6 +430,12 @@ program initial_conditions
   endif
 
   cxyz=real(cxyz)*delta_k ! phi(k) = kernel(k) * delta_L(k)
+  if (write_phik) then
+    if (head) print*, '  write phi1 into file'
+    open(11,file=output_name('phik'),status='replace',access='stream')
+    write(11) cxyz
+    close(11)
+  endif
   call pencil_fft_backward ! real space phi is stored in r3
 
   phi=0
