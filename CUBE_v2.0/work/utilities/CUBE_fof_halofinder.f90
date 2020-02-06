@@ -339,7 +339,7 @@ program CUBE_FoF
 
     ! transfer data to smaller arrays
     allocate(x_mean(3,nhalo),v_mean(3,nhalo),q_mean(3,nhalo),u_mean(3,nhalo),iph_halo(nhalo))
-    x_mean=x_mean_all(:,:nhalo)
+    x_mean=x_mean_all(:,:nhalo)*nf_global ! convert into unit of fine cell
     v_mean=v_mean_all(:,:nhalo)
     q_mean=q_mean_all(:,:nhalo)
     u_mean=u_mean_all(:,:nhalo)

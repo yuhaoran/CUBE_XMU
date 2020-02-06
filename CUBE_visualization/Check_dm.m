@@ -1,7 +1,7 @@
 clear; SetDefault
 format short
 global Redshift Redshift_i Universe Path Dir
-Universe='11';
+Universe='1';
 Redshift_i='100.000';
 Redshift='0.000';
 %Path='/Users/haoran/cloud/CUBE_spin/CUBE_v2.0/output/';
@@ -34,7 +34,7 @@ if 1
   delta_c=loadfield3d([Path,Dir,Redshift,'_delta_c_1.bin']);
   xgrid=[0.5,sim.box-0.5];
   figure; imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,1:50),3),ng,ng)'); hold on
-  axis xy square; colorbar; caxis([-3,3]); title('$\delta_c$'); colormap(1-gray);
+  axis xy square; colorbar; caxis([-1,3]); title('$\delta_c$'); colormap(1-gray);
 end
 %% delta_E
 if 0
@@ -53,8 +53,6 @@ fid=fopen([Path,Dir,Redshift,'_fof_1.bin']);
   linking_parameter=fread(fid,1,'real*4')';
   hcat=fread(fid,[ninfo,nhalo],'real*4');
 fclose(fid);
-hcat(2:4,:)=hcat(2:4,:)*sim.box;
-hcat(8:10,:)=hcat(8:10,:)*sim.box;
 n_plot=1000;
 if 1
   h1=plot3(hcat(2,:),hcat(3,:),hcat(4,:),'k.'); hold on

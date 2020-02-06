@@ -18,6 +18,8 @@ ic_nu.x: parameters.o variables.o pencil_fft.o initial_conditions_nu.o
 
 lpt.x: parameters.o variables.o pencil_fft.o lpt.o halofind.o powerspectrum.o indexedsort.o
 	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
+fof.x: parameters.o CUBE_fof_halofinder.o
+	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
 lpt1.x: parameters.o lpt1.o
 	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
 spinfield.x: parameters.o spinfield.o
@@ -65,7 +67,9 @@ initial_conditions_nu.o: initial_conditions_nu.f90 parameters.o variables.o penc
 
 lpt.o: lpt.f90 parameters.o variables.o pencil_fft.o powerspectrum.o
 	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)
-lpt1.o: lpt1.f90 parameters.o
+CUBE_fof_halofinder.o: CUBE_fof_halofinder.f90 parameters.o
+	$(FC) $(OFLAG) $(OPTIONS) $<
+lpt1.o: lpt1.f90 parameters.o CUBE_fof_halofinder.o
 	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)
 spinfield.o: spinfield.f90 parameters.o
 	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)

@@ -1,33 +1,37 @@
 #define macbook
-!#define debug
-#define reco_idsp
+!#define ELUCID
+!#define reco_idsp
 program lpt
   use omp_lib
   use parameters
+  use halo_output
   !use pencil_fft
   use iso_fortran_env, only : int64
   implicit none
   save
-
+#ifdef ELUCID
   integer,parameter :: ngrid=500 ! ELUCID grid number
+#else
+  integer,parameter :: ngrid=ng
+#endif
 
-  integer(4) t1,t2,tt1,tt2,ttt1,ttt2,t_rate,nhalo,ihalo,hgrid(3)
-  integer(8) kg,jg,ig,ii,jj,imassbin
+  integer(4) t1,t2,tt1,tt2,t_rate,nhalo,ihalo,hgrid(3),ninfo
+  integer(8) kg,jg,ig,ii,jj,imassbin,cur_checkpoint
   real kr,kx,ky,kz,pow,r_filter,rm,masstemp
   real spin_u(3),spin_v(3),spin_r(3),spin_e(3,3),hpos1(3),hpos0(3)
   integer(8) plan_fft_fine,plan_ifft_fine
+  !real,allocatable :: rho_f(:,:,:)
+  !complex,allocatable :: crho_f(:,:,:)
   real rho_f(ngrid+2,ngrid,ngrid)
   complex crho_f(ngrid/2+1,ngrid,ngrid)
 
-  real phi(0:ngrid+1,0:ngrid+1,0:ngrid+1)
-  real phi_large(0:ngrid+1,0:ngrid+1,0:ngrid+1)
-  real idsp(3,ngrid,ngrid,ngrid)
-  complex phi_k(ngrid/2+1,ngrid,ngrid)
+  real,allocatable :: phi(:,:,:),phi_large(:,:,:),idsp(:,:,:,:)
+  complex,allocatable :: phi_k(:,:,:)
   integer i,j,k,n_rsmall,n_ratio,nmassbin,itemp,l
   real t11,t22,t33,t12,t23,t31
   real tsmall(3,3),tlarge(3,3),torque(3,3)
   real spin(3,ngrid,ngrid,ngrid)
-  real,allocatable :: spin_x(:,:),spin_q(:,:),spin_t(:,:),theta(:,:),imass(:),imass_info(:,:)
+  real,allocatable :: theta(:,:),imass_info(:,:)
   real,allocatable :: corr_x(:,:,:),corr_q(:,:,:),corr_t(:,:,:),r_small(:),ratio_scale(:)
   integer,allocatable :: ind(:,:),isort_mass(:),i1(:),i2(:),ii1,ii2
   equivalence(rho_f,crho_f)
@@ -43,10 +47,11 @@ program lpt
     real x_mean(3),v_mean(3),ang_mom(3),var_x(3),inertia(3,3)
     real q_mean(3),inertia_q(3,3),s_mean(3)
   endtype
-  
+
   type(type_halo_info) halo_info
   type(type_halo_catalog) halo_catalog
-
+  type(type_halo_catalog_header) halo_header
+  type(type_halo_catalog_array),allocatable :: hcat(:)
 
   !call omp_set_num_threads(ncore)
   !call geometry
@@ -58,8 +63,9 @@ program lpt
   71 n_checkpoint=i-1
   close(16)
   cur_checkpoint=n_checkpoint ! read halos first
+  sim%cur_checkpoint=cur_checkpoint
   print*, ''
-  print*, 'program LPT1 on single node'
+  print*, 'spin mode correlation code on single node'
   print*, 'on',ncore,' cores'
   print*, 'Resolution ngrid =', ngrid
   print*, 'at redshift=',z_checkpoint(cur_checkpoint)
@@ -76,64 +82,55 @@ program lpt
   sync all
   ! open halo catalog
   print*,''
-  print*,'read halo catalog'
-  open(11,file=output_name('halo'),status='old',access='stream')
-  open(12,file=output_name('halo_init_spin'),status='old',access='stream')
-  open(13,file=output_name('halo_sort_index'),status='old',access='stream')
-  read(11) halo_catalog
-  nhalo=halo_catalog%nhalo
-  allocate(isort_mass(nhalo),imass(nhalo))
-  allocate(spin_x(3,nhalo),spin_q(3,nhalo),spin_t(3,nhalo),ind(3,nhalo),theta(3,nhalo))
-  ! read halo q-pos & spin
+  print*,'read halo catalog ',output_name('fof')
+  open(11,file=output_name('fof'),status='old',access='stream')
+  read(11) halo_header
+  nhalo=halo_header%nhalo; ninfo=halo_header%ninfo
+  allocate(hcat(nhalo))
+  read(11) hcat
+  close(11)
 
+  allocate(ind(3,nhalo),theta(3,nhalo))
+  allocate(phi(0:ngrid+1,0:ngrid+1,0:ngrid+1))
+  allocate(phi_large(0:ngrid+1,0:ngrid+1,0:ngrid+1))
+  allocate(phi_k(ngrid/2+1,ngrid,ngrid))
 #ifdef reco_idsp
+  allocate(idsp(3,ngrid,ngrid,ngrid))
   open(10,file=output_name('idsp_c'),status='old',access='stream')
-  read(10) idsp
+  read(10) idsp ! map from Eulerian space to Lagrangian space
   close(10)
 #endif
-
   do ihalo=1,nhalo
-    read(11) halo_info
-    read(12) spin_q(:,ihalo),spin_t(:,ihalo),spin_x(:,ihalo),spin_u,spin_v,spin_r,spin_e(:,1:3)
-    imass(ihalo)=halo_info%mass_odc
 #   ifdef reco_idsp
-      hpos1 = halo_info%s_mean/real(ng_global)*real(ngrid)
+      hpos1 = hcat(ihalo)%s/real(ng_global)*real(ngrid)
       hgrid = ceiling(hpos1)
       hpos0 = hpos1 + idsp(:,hgrid(1),hgrid(2),hgrid(3))
       hpos0 = modulo(hpos0,real(ngrid))
       ind(:,ihalo) = ceiling(hpos0)
 #   else
-    ind(:,ihalo)=ceiling(halo_info%q_mean/real(ng_global)*real(ngrid))
+      ind(:,ihalo)=ceiling(hcat(ihalo)%q/real(ng_global)*real(ngrid)) ! indeces in phi
 #   endif
   enddo
-  read(13) isort_mass ! read index by halo mass sort
-  close(11)
-  close(12)
-  close(13)
-  ! sort according to halo mass
-  spin_x=spin_x(:,isort_mass)
-  spin_q=spin_q(:,isort_mass)
-  spin_t=spin_t(:,isort_mass)
-  imass=imass(isort_mass)
-  ind=ind(:,isort_mass)
-  ! construct halo mass bins
+
+ ! construct halo mass bins
   rm=2.0 ! mass bin ratio
   n_rsmall=10
   n_ratio=5
-  nmassbin=ceiling(log(imass(1)/imass(nhalo))/log(rm))
+  nmassbin=ceiling(log(hcat(1)%hmass/hcat(nhalo)%hmass)/log(rm))
+  print*,'  FoF linking parameter =',halo_header%linking_parameter
+  print*,'  nhalo =',nhalo
+  print*,'  max,min of hcat%hmass =',hcat(1)%hmass,hcat(nhalo)%hmass
+  print*,'  mass bin ratio, rm =',rm
+  print*,'  nmassbin =',nmassbin
   allocate(imass_info(4,nmassbin),i1(nmassbin),i2(nmassbin))
   allocate(corr_x(n_rsmall,n_ratio,nmassbin),corr_q(n_rsmall,n_ratio,nmassbin),corr_t(n_rsmall,n_ratio,nmassbin))
   allocate(r_small(n_rsmall),ratio_scale(n_ratio))
-  print*,' N_halos_global =',halo_catalog%nhalo_tot
-  print*,' N_halos_local  =',halo_catalog%nhalo
-  print*,' Overdensity    =',halo_catalog%den_odc
-  print*,' nmassbin =',nmassbin
   imassbin=nmassbin
   i2(nmassbin)=nhalo
   i1(1)=1
   itemp=1
-  do ihalo=nhalo,1,-1
-    if (imass(ihalo)<imass(nhalo)*rm**itemp .or. imassbin==1) then
+  do ihalo=nhalo,1,-1 ! construct mass bin boundaries
+    if (hcat(ihalo)%hmass<hcat(nhalo)%hmass*rm**itemp .or. imassbin==1) then
       i1(imassbin)=ihalo ! still in the bin
     else
       imassbin=imassbin-1 ! assign to previous bin
@@ -141,6 +138,9 @@ program lpt
       itemp=itemp+1
     endif
   enddo
+  print*,'  boundaries ='
+  print*, i1
+  print*, i2
   ! construct scale bins
   do i=1,n_rsmall
     r_small(i)=1.0+0.4*(i-1)
@@ -148,11 +148,15 @@ program lpt
   do i=1,n_ratio
     ratio_scale(i)=1.1+0.2*(i-1)
   enddo
+  print*,'  smoothing scale r ='
+  print*,r_small
+  print*,'  R/r'
+  print*,ratio_scale
 
+#ifdef ELUCID
   open(11,file='../../S500_5001/cxyz_251_500_500.bin',access='stream')
   read(11) rho_f
   close(11)
-
   ! covert to potential
   do k=1,ngrid
   do j=1,ngrid
@@ -177,10 +181,16 @@ program lpt
   enddo
   crho_f(1,1,1)=0
   phi_k=crho_f
-
-
+#else
+  sim%cur_checkpoint=1 ! read IC Fourier space gravitational potential
+  open(11,file=output_name('phik'),status='old',access='stream')
+  read(11) phi_k
+  close(11)
+#endif
 
   cur_checkpoint=n_checkpoint
+  sim%cur_checkpoint=cur_checkpoint
+  imass_info=0 ! to be computed later
   open(11,file=output_name('lptcorr_i'),status='replace',access='stream')
   write(11)   nmassbin,n_rsmall,n_ratio,imass_info(:,:),r_small(:),ratio_scale(:)
   do jj=1,n_ratio
@@ -197,9 +207,9 @@ program lpt
   do imassbin=1,nmassbin
     ii1=i1(imassbin)
     ii2=i2(imassbin)
-    imass_info(1,imassbin)=minval(imass(ii1:ii2))
-    imass_info(2,imassbin)=maxval(imass(ii1:ii2))
-    imass_info(3,imassbin)=sum(imass(ii1:ii2))/(ii2-ii1+1)
+    imass_info(1,imassbin)=minval(hcat(ii1:ii2)%hmass)
+    imass_info(2,imassbin)=maxval(hcat(ii1:ii2)%hmass)
+    imass_info(3,imassbin)=sum(hcat(ii1:ii2)%hmass)/(ii2-ii1+1)
     imass_info(4,imassbin)=ii2-ii1+1
     write(11) corr_t(:,:,imassbin)
     write(11) corr_q(:,:,imassbin)
@@ -222,9 +232,9 @@ contains
 
     call gaussian_fourier_filter(phi_k,r_small)
     call sfftw_execute(plan_ifft_fine)
+    !print*,rho_f(1:3,1,1); stop
     phi(1:ngrid,1:ngrid,1:ngrid)=rho_f(:ngrid,:,:)
     call buffer_1layer(phi)
-
     call gaussian_fourier_filter(phi_k,r_small*ratio_scale)
     call sfftw_execute(plan_ifft_fine)
     phi_large(1:ngrid,1:ngrid,1:ngrid)=rho_f(:ngrid,:,:)
@@ -232,10 +242,14 @@ contains
 
     call spinfield !(phi,phi_large,spin)
     do ihalo=1,nhalo
-      theta(1,ihalo)=ccc(spin_t(:,ihalo),spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
-      theta(2,ihalo)=ccc(spin_q(:,ihalo),spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
-      theta(3,ihalo)=ccc(spin_x(:,ihalo),spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
+      !print*,ind(:,ihalo)
+      !print*,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo))
+      !stop
+      theta(1,ihalo)=ccc(hcat(ihalo)%jt,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
+      theta(2,ihalo)=ccc(hcat(ihalo)%jl,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
+      theta(3,ihalo)=ccc(hcat(ihalo)%je,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
     enddo
+    !print*,'a'
     do imassbin=1,nmassbin
       ii1=i1(imassbin)
       ii2=i2(imassbin)
