@@ -1,8 +1,7 @@
-!! add -DRECONSTRUCTION to compute delta_E from dsp
 #define Emode
 !#define potential
 !#define RSD
-program displacement
+program displacement_pro
   use parameters
 #ifdef Emode
   use powerspectrum
@@ -29,7 +28,7 @@ program displacement
   real kr,kx(3),xi(10,nbin)[*]
   complex ekx(3),pdim
   real,allocatable :: cube1(:,:,:),cube0(:,:,:)
-  complex,allocatable :: cdiv(:,:,:)
+  complex,allocatable :: cdiv(:,:,:),cphi(:,:,:)
 #endif
 
 #ifdef dspE
@@ -61,7 +60,8 @@ program displacement
     print*,''
   endif
   allocate(rho0(ng,ng,ng),rhoc(nt,nt,nt,nnt,nnt,nnt),rhoc0(nt,nt,nt,nnt,nnt,nnt))
-  allocate(vc(3,nt,nt,nt,nnt,nnt,nnt),cube1(ng,ng,ng),cube0(ng,ng,ng),cdiv(ng*nn/2+1,ng,npen))
+  allocate(vc(3,nt,nt,nt,nnt,nnt,nnt),cube1(ng,ng,ng),cube0(ng,ng,ng))
+  allocate(cdiv(ng*nn/2+1,ng,npen),cphi(ng*nn/2+1,ng,npen))
   sync all
   n_checkpoint=n_checkpoint[1]
   z_checkpoint(:)=z_checkpoint(:)[1]
@@ -260,7 +260,7 @@ program displacement
 #ifdef Emode
       print*,''
       print*,'Start computing delta_E'
-      !cphi=0
+      cphi=0
       cdiv=0
       do i_dim=1,3
         print*,'  working on dim',int(i_dim,1)
@@ -280,7 +280,7 @@ program displacement
           dim_2=mod(dim_1,3)+1
           dim_3=mod(dim_2,3)+1
           pdim=(ekx(dim_1)-1)*(ekx(dim_2)+1)*(ekx(dim_3)+1)/4
-          !cphi(i,j,k)=cphi(i,j,k)+cxyz(i,j,k)*pdim/(-4*sum(sin(pi*kx/ng)**2)+0.000001)
+          cphi(i,j,k)=cphi(i,j,k)+cxyz(i,j,k)*pdim/(-4*sum(sin(pi*kx/ng)**2)+0.000001)
           cdiv(i,j,k)=cdiv(i,j,k)+cxyz(i,j,k)*pdim
         enddo
         enddo
@@ -288,10 +288,14 @@ program displacement
       enddo ! i_dim
 
       if (head) then
-        !cphi(1,1,1)=0
+        cphi(1,1,1)=0
         cdiv(1,1,1)=0
       endif
       sync all
+
+      open(11,file=output_name('phik_E'),status='replace',access='stream')
+      write(11) cphi
+      close(11)
 
       !! reconstructed delta
       cxyz=cdiv

@@ -1,9 +1,11 @@
+#define gw_1
+!#define gw_2
 !! use simga_8 to specify the power spectrum amplitude
 #define sigma_8
 !! read existing random seed to generate random numbers
 !#define READ_SEED
 !! read same random noise to generate same initial conditions
-!#define READ_NOISE
+#define READ_NOISE
 
 program initial_conditions
   use omp_lib
@@ -315,11 +317,17 @@ program initial_conditions
     kx=ig-1
 
     ! GW phase transition
-    !kx=(1+0.25)*kx
-    !ky=(1-0.25)*ky
+#ifdef gw_1
+    kx=(1+0.25)*kx
+    ky=(1-0.25)*ky
+#endif
+#ifdef gw_2
+    kx=(1-0.25)*kx
+    ky=(1+0.25)*ky
+#endif
 
     kr=sqrt(kx**2+ky**2+kz**2) ! kr is |k_n|
-    kr=max(kr,1.0) ! avoid zero
+    !kr=max(kr,1.0) ! avoid zero
     !pow=interp_tf(2*pi*kr/box,1,2)/(4*pi*kr**3)
     !cxyz(i,j,k)=cxyz(i,j,k)*sqrt(pow*nf_global*nf_global*nf_global)
     cxyz(i,j,k)=cxyz(i,j,k)*sqrt(interp_tf(2*pi*kr/box,1,2)/(4*pi)*(nf_global/kr))*(nf_global/kr)

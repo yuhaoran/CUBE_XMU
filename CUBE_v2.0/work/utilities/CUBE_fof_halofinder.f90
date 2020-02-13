@@ -21,7 +21,7 @@ program CUBE_FoF
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nf_global ! nfof is the resolution to do percolation
   integer,parameter :: ninfo=94 ! number of real numbers per halo in the halo catalog
-  real,parameter :: b_link=0.2 ! linking length
+  real,parameter :: b_link=0.20 ! linking length
   real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
 
   type(type_halo_catalog_header) halo_header
@@ -74,7 +74,7 @@ program CUBE_FoF
   z_checkpoint(:)=z_checkpoint(:)[1]
   sync all
 
-  do cur_checkpoint= n_checkpoint,n_checkpoint
+  do cur_checkpoint= 2,n_checkpoint
     sim%cur_checkpoint=cur_checkpoint
     print*, 'start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
     print*, '  read checkpoint header',output_name('info')
@@ -420,7 +420,7 @@ program CUBE_FoF
       hcat(ihalo)%jt(1)=torque(2,3)-torque(3,2)
       hcat(ihalo)%jt(2)=torque(3,1)-torque(1,3)
       hcat(ihalo)%jt(3)=torque(1,2)-torque(2,1)
-      ! hcat(ihalo)%jt=hcat(ihalo)%jt/norm2(hcat(ihalo)%jt)
+      hcat(ihalo)%jt=hcat(ihalo)%jt/norm2(hcat(ihalo)%jt)
       ! eigen decomposition
       !print*,'eigenvalue'
       !print*,'hcat(ihalo)%hmass=',hcat(ihalo)%hmass
@@ -508,16 +508,17 @@ program CUBE_FoF
     close(11)
 
     deallocate(iph_halo)
-    deallocate(xf,xf_party,hoc,ll,ip_party,ip_friend,llgp,hcgp,ecgp,pos_fof,pid)
+    deallocate(xf,vf,xf_party,hoc,ll,ip_party,ip_friend,llgp,hcgp,ecgp,pos_fof,pid)
     deallocate(dx,dv,dq,du)
-
+    deallocate(hcat)
+    
     call system_clock(tt2,t_rate)
     print*, 'total time =',real(tt2-tt1)/t_rate,'secs';
   enddo
   print*,'CUBE_FoF done'
 
   
-
+  stop
   print*,''
   print*,'spin correlation analysis'
   allocate(mu(6,nhalo))
@@ -561,7 +562,7 @@ program CUBE_FoF
   !print*,'mu(I1T,e)',sum(mu(4,:))/nhalo
   !print*,'mu(I2T,e)',sum(mu(5,:))/nhalo
   !print*,'mu(I3T,e)',sum(mu(6,:))/nhalo
-  deallocate(mu,hcat)
+  deallocate(mu)
 
   contains
 

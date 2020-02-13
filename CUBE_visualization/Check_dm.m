@@ -1,7 +1,7 @@
 clear; SetDefault
 format short
 global Redshift Redshift_i Universe Path Dir
-Universe='1';
+Universe='2';
 Redshift_i='100.000';
 Redshift='0.000';
 %Path='/Users/haoran/cloud/CUBE_spin/CUBE_v2.0/output/';
@@ -26,7 +26,7 @@ if 1
   xgrid=[0.5,sim.box-0.5];
   figure; imagesc(xgrid,xgrid,reshape(mean(delta_L(:,:,:),3),ng,ng)'); hold on
   axis xy square; colorbar; caxis([-3,3]); title('$\delta_L$')
-  colormap(1-gray)
+  %colormap(1-gray)
 end
 %% delta_c
 if 1
@@ -37,15 +37,15 @@ if 1
   axis xy square; colorbar; caxis([-1,3]); title('$\delta_c$'); colormap(1-gray);
 end
 %% delta_E
-if 0
+if 1
   delta_E=loadfield3d([Path,Dir,Redshift,'_delta_E_1.bin']);
   xgrid=[0.5,sim.box-0.5];
   figure; imagesc(xgrid,xgrid,reshape(mean(delta_E(:,:,:),3),ng,ng)'); hold on
   axis xy square; colorbar; caxis([-3,3]); title('$\delta_E$')
 end
 %colormap(1-gray);
-return
 %% FoF halo catalog
+Redshift='0.000';
 fid=fopen([Path,Dir,Redshift,'_fof_1.bin']);
   nhalo_tot=fread(fid,1,'integer*4')';
   nhalo=fread(fid,1,'integer*4')';
@@ -53,8 +53,9 @@ fid=fopen([Path,Dir,Redshift,'_fof_1.bin']);
   linking_parameter=fread(fid,1,'real*4')';
   hcat=fread(fid,[ninfo,nhalo],'real*4');
 fclose(fid);
-n_plot=1000;
+n_plot=100;
 if 1
+  figure
   h1=plot3(hcat(2,:),hcat(3,:),hcat(4,:),'k.'); hold on
   h1.MarkerSize=0.1;
   plot3(hcat(2,1:n_plot),hcat(3,1:n_plot),hcat(4,1:n_plot),'ro')
@@ -63,10 +64,32 @@ if 1
 end
 % alignment statistics
 n1=1; n2=nhalo;
+disp('=================')
 disp('correlations')
 mean(dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2)))
 mean(dot(hcat(14:16,n1:n2),hcat(20:22,n1:n2)))
 mean(dot(hcat(17:19,n1:n2),hcat(20:22,n1:n2)))
+%return
+
+% b
+n1=1; n2=nhalo;
+disp('Lagrangian b_1, b_2, b_3')
+disp(mean(hcat(14:16,n1:n2).^2,2)-1/3)
+disp('\pm')
+disp(1/3/sqrt(n2-n1+1))
+
+disp('Eulerian b_1, b_2, b_3')
+disp(mean(hcat(17:19,n1:n2).^2,2)-1/3)
+disp('\pm')
+disp(1/3/sqrt(n2-n1+1))
+
+disp('TTT b_1, b_2, b_3')
+disp(mean(hcat(20:22,n1:n2).^2,2)-1/3)
+disp('\pm')
+disp(1/3/sqrt(n2-n1+1))
+
+return
+
 %% plot histogram of theta(j_q,j_0); test rebin first
 hmass_min=hcat(1,nhalo)*sim.mass_p_solar;
 hmass_max=hcat(1,1)*sim.mass_p_solar;
@@ -113,23 +136,6 @@ mu(3,:)=dot(hcat(17:19,:),hcat(20:22,:));
 
 figure; plot3(ellip,prol,mu(1,:),'.'); box on; 
 xlabel('$e$'),ylabel('$p$'),zlabel('$\mu$')
-%%
-disp('Lagrangian b_1, b_2, b_3')
-disp(mean(hcat(14:16,n1:n2).^2,2)-1/3)
-disp('\pm')
-disp(1/3/sqrt(n2-n1+1))
-
-disp('Eulerian b_1, b_2, b_3')
-disp(mean(hcat(17:19,n1:n2).^2,2)-1/3)
-disp('\pm')
-disp(1/3/sqrt(n2-n1+1))
-
-disp('TTT b_1, b_2, b_3')
-disp(mean(hcat(20:22,n1:n2).^2,2)-1/3)
-disp('\pm')
-disp(1/3/sqrt(n2-n1+1))
-
-return
 %% FoF PID
 n_plot=1;
 fid=fopen([Path,Dir,Redshift,'_fofpid_1.bin']);
