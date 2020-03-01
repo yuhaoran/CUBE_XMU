@@ -1,4 +1,4 @@
-#define gw_1
+!#define gw_1
 !#define gw_2
 !! use simga_8 to specify the power spectrum amplitude
 #define sigma_8

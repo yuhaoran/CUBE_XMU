@@ -2,7 +2,7 @@ source ../utilities/module_load_brew.sh
 
 cd ../utilities/
 make clean
-make ic.x dsp.x cicpower.x fof.x lpt1.x
+make ic.x dsp.x cicpower.x fof.x lpt1.x cicrsd.x
 ./ic.x
 
 cd ../main/
@@ -15,5 +15,6 @@ cd ../utilities/
 ./cicpower.x
 ./fof.x
 ./lpt1.x
+./cicrsd.x
 
 cd ../main/

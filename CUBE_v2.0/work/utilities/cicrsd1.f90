@@ -11,6 +11,7 @@ program cicrsd
   real,parameter :: cen(3)=[30,370,370]
   integer(8) i,j,k,l,i_dim,iq(3),nplocal,nplocal_nu,itx,ity,itz
   integer(8) nlast,ip,np,idx1(3),idx2(3),pid8
+  integer cur_checkpoint
 
   real(4) rho_grid(0:ngrid+1,0:ngrid+1,0:ngrid+1), dsp(3,0:ngrid+1,0:ngrid+1,0:ngrid+1)
   real(4) rho_c(ngrid,ngrid,ngrid),sigma_vi,zshift,los(3),sx(3)
@@ -39,6 +40,7 @@ program cicrsd
     print*,''
 
   do cur_checkpoint= n_checkpoint,n_checkpoint
+    sim%cur_checkpoint=cur_checkpoint
     print*, 'Start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
 
     open(11,file=output_name('info'),status='old',action='read',access='stream')

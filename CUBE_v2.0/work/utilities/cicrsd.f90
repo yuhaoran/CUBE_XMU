@@ -1,5 +1,5 @@
 !! Include RSD effect of particles, and CIC interpolate into grid to get the redshift-space density field
-#define RSD_ELUCID
+!#define RSD_ELUCID
 program cicrsd
   use parameters
   implicit none
@@ -10,6 +10,7 @@ program cicrsd
   real,parameter :: cen(3)=[30,370,370]
   integer(8) i,j,k,l,i_dim,iq(3),nplocal,nplocal_nu,itx,ity,itz
   integer(8) nlast,ip,np,idx1(3),idx2(3)
+  integer cur_checkpoint
 
   real(4) rho_grid(0:ng+1,0:ng+1,0:ng+1)[*]
   real(4) rho_c(ng,ng,ng),sigma_vi,zshift,los(3),sx(3)
@@ -48,10 +49,12 @@ program cicrsd
   sync all
 
   do cur_checkpoint= n_checkpoint,n_checkpoint
+    sim%cur_checkpoint=cur_checkpoint
+    print*,cur_checkpoint,sim%cur_checkpoint
     if (head) print*, 'Start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
 
     !call particle_initialization
-
+    print*,output_name('info')
     open(11,file=output_name('info'),status='old',action='read',access='stream')
     read(11) sim
     close(11)
