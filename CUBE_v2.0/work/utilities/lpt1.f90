@@ -248,7 +248,7 @@ contains
     phi(1:ngrid,1:ngrid,1:ngrid)=rho_f(:ngrid,:,:)
     call buffer_1layer(phi)
     !call gaussian_fourier_filter(phi_k,r_small*ratio_scale)
-    call gaussian_fourier_filter_k2(phi_k,r_small*ratio_scale)
+    call gaussian_fourier_filter_k2(phi_k,r_small)
     call sfftw_execute(plan_ifft_fine)
     phi_large(1:ngrid,1:ngrid,1:ngrid)=rho_f(:ngrid,:,:)
     call buffer_1layer(phi_large)
