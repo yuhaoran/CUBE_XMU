@@ -10,6 +10,7 @@ module halo_output
     real,dimension(3,3) :: tide,xx,qq,vv,uu ! 2nd order stat ! 26:70
     real lambda_qq(3),vec_qq(3,3) ! eigenvalue/vector of qq ! 71:82
     real lambda_tide(3),vec_tide(3,3) ! eigenvalue/vector of tide ! 83:94
+    real spin_par,spin_ratio ! 95:96
   endtype
 endmodule
 
@@ -20,7 +21,7 @@ program CUBE_FoF
 
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nf_global ! nfof is the resolution to do percolation
-  integer,parameter :: ninfo=94 ! number of real numbers per halo in the halo catalog
+  integer,parameter :: ninfo=96 ! number of real numbers per halo in the halo catalog
   real,parameter :: b_link=0.20 ! linking length
   real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
 

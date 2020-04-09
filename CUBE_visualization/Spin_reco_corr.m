@@ -1,7 +1,7 @@
 clear; SetDefault
 format short
 global Redshift Redshift_i Universe Path Dir
-Universe='2';
+Universe='3';
 Redshift_i='100.000';
 Redshift='0.000';
 %Path='/Users/haoran/cloud/CUBE_spin/CUBE_v2.0/output/';

@@ -1,7 +1,7 @@
 clear; SetDefault
 format short
 global Redshift Redshift_i Universe Path Dir
-Universe='2';
+Universe='12';
 Redshift_i='100.000';
 Redshift='0.000';
 %Path='/Users/haoran/cloud/CUBE_spin/CUBE_v2.0/output/';
@@ -13,6 +13,15 @@ disp('-------------------------------------------------------------------')
 disp('nf ='); disp(sim.nf)
 disp('box ='); disp(sim.box)
 disp('mass_p ='); disp(sim.mass_p_solar)
+%% autopower
+n_row_xi=10;
+fid=fopen([Path,Dir,Redshift,'_cicpower_1.bin']);
+  xi=fread(fid,'real*4')';
+fclose(fid);
+xi=reshape(xi,n_row_xi,numel(xi)/n_row_xi)';
+camb=load('CAMB/pkz0.txt');
+figure(2); loglog(camb(:,1),camb(:,2).*camb(:,1).^3/(2*pi^2),'--',xi(:,2),xi(:,3))
+grid on; hold on
 %% phi
 if 1
   phi1=loadfield3d([Path,Dir,Redshift_i,'_phi1_1.bin']);
@@ -33,7 +42,7 @@ if 1
   Redshift='0.000';
   delta_c=loadfield3d([Path,Dir,Redshift,'_delta_c_1.bin']);
   xgrid=[0.5,sim.box-0.5];
-  figure; imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,1:50),3),ng,ng)'); hold on
+  figure; imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,:),3),ng,ng)'); hold on
   axis xy square; colorbar; caxis([-1,3]); title('$\delta_c$'); colormap(1-gray);
 end
 %% delta_E

@@ -5,7 +5,7 @@
 !! read existing random seed to generate random numbers
 !#define READ_SEED
 !! read same random noise to generate same initial conditions
-#define READ_NOISE
+!#define READ_NOISE
 
 program initial_conditions
   use omp_lib
