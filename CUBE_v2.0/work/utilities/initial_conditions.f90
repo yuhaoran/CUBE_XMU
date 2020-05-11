@@ -1,9 +1,6 @@
-!#define gw_1
-!#define gw_2
-!! use simga_8 to specify the power spectrum amplitude
-#define sigma_8
 !! read existing random seed to generate random numbers
 !#define READ_SEED
+
 !! read same random noise to generate same initial conditions
 !#define READ_NOISE
 
@@ -21,45 +18,34 @@ program initial_conditions
   logical,parameter :: correct_kernel=.true.
   logical,parameter :: write_potential=.true.
   logical,parameter :: write_phik=.true.
+  logical,parameter :: norm_as_sigma8=.true.
 
-#ifdef sigma_8
-  integer(8),parameter :: nk=1000 ! transfer function length
+  integer,parameter :: nk=129 ! transfer function length
   real tf(7,nk) ! transfer function array
-#else
-  integer(8),parameter :: nk=132
-  real tf(14,nk)
-#endif
 
   integer(8) i,j,k,ip,l,nzero
   integer(8) ind,dx,dxy,kg,mg,jg,ig,ii,jj,kk,itx,ity,itz,idx,imove,g(3),iq(3)
   integer(4) seedsize,t1,t2,tt1,tt2,ttt1,ttt2,t_rate,ilayer,nlayer
   real a_i,kr,kx,ky,kz,kmax,temp_r,temp_theta,pow,phi8,temp8[*]
-  real(8) v8,norm,xq(3),gradphi(3),vreal(3),dvar[*],dvarg
+  real(8) v8,norm_As,xq(3),gradphi(3),vreal(3),dvar[*],dvarg
   integer(int64) time64
 
   integer(4),allocatable :: iseed(:)
   real,allocatable :: rseed_all(:,:)
 
-  !complex delta_k(nyquist+1,nf,npen) !! delta(k) in Fourier space
   complex,allocatable :: delta_k(:,:,:)
-  !real phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*] !! gravitational potential in real space, with buffers
   real,allocatable :: phi(:,:,:)[:]
 
   !! zip format arrays
   integer(8),parameter :: npt=nt*np_nc ! np (number of particle) / tile / dimension (dim)
   integer(8),parameter :: npb=ncb*np_nc ! np / buffer depth
   integer(8),parameter :: npmax=2*(npt+2*npb)**3 ! maximum np in memory
-  !integer(4) rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! rho_coarse_extended(with buffer)
   integer(4),allocatable :: rhoce(:,:,:)
-  !integer(1) rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! auxilary rhoce for counting particles  ! very technical
   integer(1),allocatable :: rholocal(:,:,:)
-  !real(4) vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! coarse grid velocity field (with buffer)
   real(4),allocatable :: vfield(:,:,:,:)
   integer(8) idx_ex_r(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb) ! index_extended_rhs ! very technical
   integer(8),dimension(nt,nt) :: pp_l,pp_r,ppe_l,ppe_r ! for particle index ! very technical
 
-  !integer(izipx) xp(3,npmax) ! integer-based particle positions, izipx = 1 or 2
-  !integer(izipv) vp(3,npmax) ! integer-based particle velocities, izipv = 1 or 2
   integer(izipx),allocatable :: xp(:,:)
   integer(izipv),allocatable :: vp(:,:)
 #ifdef PID
@@ -167,59 +153,34 @@ program initial_conditions
   if (head) print*,''
   if (head) print*,'Transfer function'
   call system_clock(t1,t_rate)
-#ifdef sigma_8
-  open(11,file='../../tf/ith2_mnu0p05_z5_tk.dat',form='formatted') ! read in transfer function
-  !open(11,file='../tf/nu100_onu3/nu100_onu3_transfer_out_z10.dat',form='formatted')
-  !open(11,file='../configs/mmh_transfer/simtransfer_bao.dat',form='formatted') ! for Xin
+  open(11,file='../../tf/camb_48313801_transfer_out_z0.dat.txt',form='formatted')
   read(11,*) tf
   close(11)
-  ! normalization
-  ! norm=2.*pi**2.*(h0/100.)**4*(h0/100./0.05)**(n_s-1) ! for Xin
-  norm=1
-  if (head) print*, 'Normalization factor: norm =', norm
-  !Delta^2
-  !do i=2,size(tf,dim=1)
-  !  tf(i,:)=tf(i,:)**2.0 * tf(1,:)**(3+n_s) * norm / (2.0*pi**2)
-  !enddo
-  tf(2,:)=tf(2,:)**2.0 * tf(1,:)**(3+n_s) * norm / (2.0*pi**2)
-  tf(3,:)=tf(3,:)**2.0 * tf(1,:)**(3+n_s) * norm / (2.0*pi**2)
-  tf(6,:)=tf(6,:)**2.0 * tf(1,:)**(3+n_s) * norm / (2.0*pi**2)
-  !dk
-  tf(4,1)=tf(1,2)/2
-  do k=2,nk-1
-    tf(4,k)=(tf(1,k+1)-tf(1,k-1))/2
-  enddo
-  tf(4,nk)=tf(1,nk)-tf(1,nk-1)
-  v8=0
-  kmax=2*pi*sqrt(3.)*nyquist/box
-  do k=1,nk
-    if (tf(1,k)>kmax) exit
-    v8=v8+tf(2,k)*tophat(tf(1,k)*8)**2*tf(4,k)/tf(1,k)
-  enddo
-  if (head) print*, 's8**2/v8:', v8, s8**2/v8,nyquist
-  ! normalize according to sigma_8
-  tf(2:3,:)=tf(2:3,:)*(s8**2/v8)*Dgrow(sim%a)**2
-  !tf(2:3,:)=tf(2:3,:)*(s8**2/v8)
-  !tf(2,:)=tf(6,:)*(s8**2/v8)*DgrowRatio(z_i,z_tf)**2 ! T_cb rather than T_c
-  !tf(2:3,:)= scalar_amp*tf(2:3,:)*Dgrow(a)**2 ! for Xin
+  tf(2,:)= tf(1,:)**(3+n_s) * tf(2,:)**2 / (2*pi**2)
+  if (norm_as_sigma8) then
+    if (head) print*,'  scale amplitude as sigma_8'
+    if (head) print*,'  sigma_8 =',s8
+    v8=0; tf(4,1)=tf(1,2)/2 ! calculate v8
+    do k=2,nk-1
+      tf(4,k)=(tf(1,k+1)-tf(1,k-1))/2
+    enddo
+    tf(4,nk)=tf(1,nk)-tf(1,nk-1)    
+    kmax=2*pi*sqrt(3.)*nyquist/box
+    do k=1,nk
+      if (tf(1,k)>kmax) exit
+      v8=v8+tf(2,k)*tophat(tf(1,k)*8)**2*tf(4,k)/tf(1,k)
+    enddo
+    if (head) print*, '  v8, (s8^2/v8) =', v8, s8**2/v8
+    tf(2,:)=tf(2,:)*(s8**2/v8)*Dgrow(sim%a)**2
+  else
+    if (head) print*,'  scale as A_s'
+    !norm_As=2.*pi**2*h0**4*(h0/0.05)**(n_s-1)
+    norm_As=3.878
+    if (head) print*,'  norm_As =',norm_As
+    if (head) print*,'  A_s =',A_s
+    tf(2,:)=A_s*norm_As*tf(2,:)*Dgrow(sim%a)**2
+  endif
   sync all
-
-#else
-  ! use A_s (power spectrum amplitude directly) instead of sigma_8
-  ! remark: requires "CLASS" format for tf ("CAMB"="CLASS"/(-k^2) with k in 1/Mpc)
-  open(11,file='../../tf/caf_z10_tk.dat',form='formatted')
-  read(11,*) !header
-  read(11,*) tf
-  close(11)
-  ! replace T_g with T_cb = f_c T_c + f_b T_b
-  tf(2,:) = (omega_bar*tf(3,:)+omega_cdm*tf(4,:))/(omega_bar+omega_cdm)
-  ! compute power spectrum @ z_tf
-  tf(2,:) = A_s*(tf(1,:)/k_o)**(n_s-1.)*tf(2,:)**2
-  ! propagate to starting redshift
-  tf(2,:) = tf(2,:)*DgrowRatio(z_i,z_tf)**2
-
-  sync all
-#endif
 
   ! noisemap -------------------------------------
   if (head) print*,''
@@ -809,7 +770,7 @@ program initial_conditions
     !else
     !  tophat=1
     !endif
-    tophat=merge(1.,3*(sin(x)-cos(x)*x)/x**3,x==0)
+    tophat=merge(1d0,3*(sin(x*1d0)-cos(x*1d0)*x*1d0)/(x*1d0)**3,x==0)
   endfunction tophat
 
   function Dgrow(a) ! growth function

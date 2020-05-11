@@ -77,6 +77,7 @@ program CUBE_FoF
 
   do cur_checkpoint= 2,n_checkpoint
     sim%cur_checkpoint=cur_checkpoint
+    print*, ''
     print*, 'start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
     print*, '  read checkpoint header',output_name('info')
     ! read CUBE checkpoint
