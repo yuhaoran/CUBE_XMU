@@ -13,8 +13,8 @@ make
 cd ../utilities/
 ./dsp.x
 ./cicpower.x
-./fof.x
-./lpt1.x
-./cicrsd.x
+#./fof.x
+#./lpt1.x
+#./cicrsd.x
 
 cd ../main/

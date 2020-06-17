@@ -8,7 +8,7 @@ OPTIONS+=-DPID
 #OPTIONS+=-Dpositive
 #OPTIONS+=-DEmode -DdspE
 
-all: ic.x cicpower.x #cicrsd.x cicrsd1.x halofinder.x dsp.x lpt.x lpt1.x spinfield.x ang_mom_corr.x #vel.x qspace.x corr.x #convert.x
+all: ic.x cicpower.x # spin_mode.x djdm.x cicrsd.x cicrsd1.x halofinder.x dsp.x lpt.x lpt1.x spinfield.x ang_mom_corr.x #vel.x qspace.x corr.x #convert.x
 	@echo "done"
 
 ic.x:    parameters.o variables.o pencil_fft.o initial_conditions.o powerspectrum.o
@@ -21,6 +21,10 @@ lpt.x: parameters.o variables.o pencil_fft.o lpt.o halofind.o powerspectrum.o in
 fof.x: parameters.o CUBE_fof_halofinder.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
 lpt1.x: parameters.o lpt1.o
+	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
+spin_mode.x: parameters.o spin_mode.o
+	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
+djdm.x: parameters.o djdm.o
 	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
 spinfield.x: parameters.o spinfield.o
 	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
@@ -70,6 +74,10 @@ lpt.o: lpt.f90 parameters.o variables.o pencil_fft.o powerspectrum.o
 CUBE_fof_halofinder.o: CUBE_fof_halofinder.f90 parameters.o
 	$(FC) $(OFLAG) $(OPTIONS) $<
 lpt1.o: lpt1.f90 parameters.o CUBE_fof_halofinder.o
+	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)
+spin_mode.o: spin_mode.f90 parameters.o CUBE_fof_halofinder.o
+	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)
+djdm.o: djdm.f08 parameters.o CUBE_fof_halofinder.o
 	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)
 spinfield.o: spinfield.f90 parameters.o
 	$(FC) $(OFLAG_NO_OMP) $(OPTIONS) $< $(FFTFLAG)

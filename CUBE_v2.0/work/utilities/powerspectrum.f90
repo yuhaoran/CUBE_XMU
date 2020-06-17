@@ -207,4 +207,47 @@ subroutine auto_power(xi,cube1)
 endsubroutine
 
 
+subroutine density_to_potential(cube1)
+  implicit none
+  integer i,j,k,ig,jg,kg
+  real kr,kx(3),cube1(ng,ng,ng)
+  print*,'convert density to potential'
+  r3=cube1
+  call pencil_fft_forward
+  cxyz=cxyz/ng_global/ng_global/ng_global
+  sync all
+
+  do k=1,npen
+  do j=1,ng
+  do i=1,nyquist+1
+    kg=(nn*(icz-1)+icy-1)*npen+k
+    jg=(icx-1)*ng+j
+    ig=i
+    kx=mod((/ig,jg,kg/)+nyquist-1,ng_global)-nyquist
+    kx=2*sin(pi*kx/ng_global)
+    kr=kx(1)**2+kx(2)**2+kx(3)**2
+    kr=max(kr,1.0/ng_global**2)
+    cxyz(i,j,k) = -4*pi/kr * cxyz(i,j,k)
+  enddo
+  enddo
+  enddo
+  cxyz(1,1,1)=0
+  sync all
+
+  open(11,file=output_name('phik'),status='replace',access='stream')
+    write(11) cxyz
+  close(11)
+  sync all
+
+  call pencil_fft_backward
+  sync all
+
+  open(11,file=output_name('phi'),status='replace',access='stream')
+    write(11) r3
+  close(11)
+  sync all
+
+endsubroutine
+
+
 endmodule

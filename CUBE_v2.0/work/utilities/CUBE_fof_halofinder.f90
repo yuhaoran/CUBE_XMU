@@ -10,7 +10,8 @@ module halo_output
     real,dimension(3,3) :: tide,xx,qq,vv,uu ! 2nd order stat ! 26:70
     real lambda_qq(3),vec_qq(3,3) ! eigenvalue/vector of qq ! 71:82
     real lambda_tide(3),vec_tide(3,3) ! eigenvalue/vector of tide ! 83:94
-    real spin_par,spin_ratio ! 95:96
+    real spin_ratio_e,spin_ratio_l ! 95:96
+    real lam_e,lam_l ! 97:98
   endtype
 endmodule
 
@@ -21,7 +22,7 @@ program CUBE_FoF
 
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nf_global ! nfof is the resolution to do percolation
-  integer,parameter :: ninfo=96 ! number of real numbers per halo in the halo catalog
+  integer,parameter :: ninfo=98 ! number of real numbers per halo in the halo catalog
   real,parameter :: b_link=0.20 ! linking length
   real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
 
@@ -33,6 +34,7 @@ program CUBE_FoF
   integer iq1,iq2,iq3,np_candidate,np_central,pbc(3),jq(3),is1,is2,qi(3),qi_hoc(3)
   integer(4) t1,t2,tt1,tt2,t_rate
   real pos1(3),rp,rp2,rsq,xf_hoc(3),vreal(3),torque(3,3),tide(6),jeig(3),t_opt(3),a_opt
+  real mu_qj,mu_uj,mu_xj,mu_vj,mu_qu,mu_xv,sj(3)
 
   integer(4),allocatable :: rhoc(:,:,:,:,:,:)
   real(4),allocatable :: vfield(:,:,:,:,:,:,:),phi(:,:,:)[:]
@@ -41,7 +43,7 @@ program CUBE_FoF
   integer(4),allocatable :: pid(:),iph_halo_all(:),iph_halo(:)
 
   integer(4),allocatable :: hoc(:,:,:),ll(:),ip_party(:),ip_friend(:),llgp(:),hcgp(:),ecgp(:),isort_mass(:)
-  real,allocatable :: xf(:,:),vf(:,:),xf_party(:,:),dx(:,:),dv(:,:),dq(:,:),du(:,:),pos_fof(:,:)
+  real,allocatable :: xf(:,:),vf(:,:),xf_party(:,:),dx(:,:),dv(:,:),dq(:,:),du(:,:),pos_fof(:,:),mu_quj(:),mu_xvj(:)
   real,allocatable :: x_mean_all(:,:),x_mean(:,:),v_mean_all(:,:),v_mean(:,:)
   real,allocatable :: q_mean_all(:,:),q_mean(:,:),u_mean_all(:,:),u_mean(:,:)
   real,allocatable :: mu(:,:)
@@ -75,7 +77,7 @@ program CUBE_FoF
   z_checkpoint(:)=z_checkpoint(:)[1]
   sync all
 
-  do cur_checkpoint= 2,n_checkpoint
+  do cur_checkpoint= n_checkpoint,n_checkpoint
     sim%cur_checkpoint=cur_checkpoint
     print*, ''
     print*, 'start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
@@ -280,6 +282,7 @@ program CUBE_FoF
     ! halo := groups with at least np_halo_min particles
     allocate(x_mean_all(3,nlist),v_mean_all(3,nlist),iph_halo_all(nlist),dx(3,nlist),dv(3,nlist))
     allocate(q_mean_all(3,nlist),u_mean_all(3,nlist),dq(3,nlist),du(3,nlist))
+    allocate(mu_quj(nlist),mu_xvj(nlist))
 
     sim%cur_checkpoint=1
     print*,'  read initial potential field',output_name('phi1')
@@ -363,19 +366,14 @@ program CUBE_FoF
       np=0; tide=0;
       do while (jp/=0) ! loop over halo members
         np=np+1
-
         dx(:,np)=modulo(xf(:,jp)-hcat(ihalo)%x+0.5,1.)-0.5 ! \in [-0.5,0.5) ! topological distince
-
         dv(:,np)=vf(:,jp)-hcat(ihalo)%v ! peculiar velocity wrt com
-
         qi=qgrid(pid(jp)) ! Lagrangian grid number ! \in {1,2,...,nf_global}
         dq(:,np)=modulo(qi-hcat(ihalo)%q+nf_global/2,nf_global*1.)-nf_global/2 ! in unit of fine grid
-
         du(1,np)=-phi(qi(1)+1,qi(2),qi(3))+phi(qi(1)-1,qi(2),qi(3))
         du(2,np)=-phi(qi(1),qi(2)+1,qi(3))+phi(qi(1),qi(2)-1,qi(3))
         du(3,np)=-phi(qi(1),qi(2),qi(3)+1)+phi(qi(1),qi(2),qi(3)-1)
         du(:,np)=du(:,np)-hcat(ihalo)%u
-
         tide(1)=tide(1)-phi(qi(1)-1,qi(2),qi(3))+2*phi(qi(1),qi(2),qi(3))-phi(qi(1)+1,qi(2),qi(3));
         tide(2)=tide(2)-phi(qi(1),qi(2)-1,qi(3))+2*phi(qi(1),qi(2),qi(3))-phi(qi(1),qi(2)+1,qi(3));
         tide(3)=tide(3)-phi(qi(1),qi(2),qi(3)-1)+2*phi(qi(1),qi(2),qi(3))-phi(qi(1),qi(2),qi(3)+1);
@@ -397,11 +395,43 @@ program CUBE_FoF
       hcat(ihalo)%je(1)=sum(dx(2,:np)*dv(3,:np)-dx(3,:np)*dv(2,:np))
       hcat(ihalo)%je(2)=sum(dx(3,:np)*dv(1,:np)-dx(1,:np)*dv(3,:np))
       hcat(ihalo)%je(3)=sum(dx(1,:np)*dv(2,:np)-dx(2,:np)*dv(1,:np))
-      hcat(ihalo)%je=hcat(ihalo)%je/norm2(hcat(ihalo)%je)
       ! initial angular momentum vector
       hcat(ihalo)%jl(1)=sum(dq(2,:np)*du(3,:np)-dq(3,:np)*du(2,:np))
       hcat(ihalo)%jl(2)=sum(dq(3,:np)*du(1,:np)-dq(1,:np)*du(3,:np))
       hcat(ihalo)%jl(3)=sum(dq(1,:np)*du(2,:np)-dq(2,:np)*du(1,:np))
+      ! spin parameter
+      do ip=1,np
+        mu_qj=sum(dq(:,ip)*hcat(ihalo)%jl)/norm2(dq(:,ip))/norm2(hcat(ihalo)%jl)
+        mu_uj=sum(du(:,ip)*hcat(ihalo)%jl)/norm2(du(:,ip))/norm2(hcat(ihalo)%jl)
+        mu_qu=sum(dq(:,ip)*du(:,ip))/norm2(dq(:,ip))/norm2(du(:,ip))
+        sj(1)=dq(2,ip)*du(3,ip)-dq(3,ip)*du(2,ip)
+        sj(2)=dq(3,ip)*du(1,ip)-dq(1,ip)*du(3,ip)
+        sj(3)=dq(1,ip)*du(2,ip)-dq(2,ip)*du(1,ip)
+        !mu_quj(ip)=sqrt(1-mu_qj**2)*sqrt(1-mu_uj**2)*sqrt(1-mu_qu**2) &
+        ! * sign(1.,sum( hcat(ihalo)%jl * sj))
+        mu_quj(ip)=sum(sj*hcat(ihalo)%jl)/norm2(sj)/norm2(hcat(ihalo)%jl) * sqrt(abs(1-mu_qu**2))
+
+        mu_xj=sum(dx(:,ip)*hcat(ihalo)%je)/norm2(dx(:,ip))/norm2(hcat(ihalo)%je)
+        mu_vj=sum(dv(:,ip)*hcat(ihalo)%je)/norm2(dv(:,ip))/norm2(hcat(ihalo)%je)
+        mu_xv=sum(dx(:,ip)*dv(:,ip))/norm2(dx(:,ip))/norm2(dv(:,ip))
+        sj(1)=dx(2,ip)*dv(3,ip)-dx(3,ip)*dv(2,ip)
+        sj(2)=dx(3,ip)*dv(1,ip)-dx(1,ip)*dv(3,ip)
+        sj(3)=dx(1,ip)*dv(2,ip)-dx(2,ip)*dv(1,ip)
+        mu_xvj(ip)=sum(sj*hcat(ihalo)%je)/norm2(sj)/norm2(hcat(ihalo)%je) * sqrt(abs(1-mu_xv**2))
+      enddo
+      hcat(ihalo)%spin_ratio_l=sum(sqrt(sum(dq(:,:np)**2,1)) * sqrt(sum(du(:,:np)**2,1)) * mu_quj(:np)) &
+        / sum(sqrt(sum(dq(:,:np)**2,1)) * sqrt(sum(du(:,:np)**2,1)))
+      hcat(ihalo)%spin_ratio_e=sum(sqrt(sum(dx(:,:np)**2,1)) * sqrt(sum(dv(:,:np)**2,1)) * mu_xvj(:np)) &
+        / sum(sqrt(sum(dx(:,:np)**2,1)) * sqrt(sum(dv(:,:np)**2,1)))
+      if (.false.) then
+        print*,ihalo,np
+        print*,hcat(ihalo)%spin_ratio_l,norm2(hcat(ihalo)%jl)
+        print*,hcat(ihalo)%spin_ratio_e,norm2(hcat(ihalo)%je)
+      endif
+      hcat(ihalo)%lam_l = norm2(hcat(ihalo)%jl) * hcat(ihalo)%hmass**(-5./3.)
+      hcat(ihalo)%lam_e = sqrt(3*pi)*norm2(hcat(ihalo)%je)/hcat(ihalo)%hmass**1.5/ (hcat(ihalo)%hmass/(300*pi))**(1./6.)
+
+      hcat(ihalo)%je=hcat(ihalo)%je/norm2(hcat(ihalo)%je)
       hcat(ihalo)%jl=hcat(ihalo)%jl/norm2(hcat(ihalo)%jl)
       ! moment of inertia tensor
       hcat(ihalo)%xx(1,1)=sum(dx(1,:np)**2)
@@ -511,7 +541,7 @@ program CUBE_FoF
 
     deallocate(iph_halo)
     deallocate(xf,vf,xf_party,hoc,ll,ip_party,ip_friend,llgp,hcgp,ecgp,pos_fof,pid)
-    deallocate(dx,dv,dq,du)
+    deallocate(dx,dv,dq,du,mu_quj,mu_xvj)
     deallocate(hcat)
     
     call system_clock(tt2,t_rate)

@@ -1,7 +1,7 @@
 !! add -DNEUTRINOS to compute cross_power(delta_c,delta_nu)
 !! otherwise compute cross_power(delta_L,delta_c)
 
-!#define write_xreal
+#define write_xv
 !#define analysis
 !define RSD
 !#define RSD_Emode
@@ -25,6 +25,7 @@ program cicpower
   real(8) rho8[*]
 
   integer(izipx),allocatable :: xp(:,:)
+  real(4),allocatable :: xv(:,:)
   !integer(4) rhoc(nt,nt,nt,nnt,nnt,nnt)
   integer(4),allocatable :: rhoc(:,:,:,:,:,:)
 
@@ -88,6 +89,9 @@ program cicpower
     endif
     !cdm
     allocate(xp(3,nplocal))
+#ifdef write_xv
+    allocate(xv(3,nplocal))
+#endif
     open(11,file=output_name('xp'),status='old',action='read',access='stream')
     read(11) xp
     close(11)
@@ -95,8 +99,8 @@ program cicpower
     read(11) rhoc
     close(11)
 
-#ifdef write_xreal
-    open(12,file=output_name('xreal'),status='replace',access='stream')
+#ifdef write_xv
+    open(12,file=output_name('xv'),status='replace',access='stream')
 #endif
 
     rho_grid=0
@@ -112,8 +116,8 @@ program cicpower
           ip=nlast+l
           pos1=nt*((/itx,ity,itz/)-1)+ ((/i,j,k/)-1) + (int(xp(:,ip)+ishift,izipx)+rshift)*x_resolution
 
-#ifdef write_xreal
-    write(12) pos1*real(ng)/real(nc)
+#ifdef write_xv
+          xv(:3,ip)=pos1*real(ng)/real(nc)
 #endif
 
           pos1=pos1*real(ng)/real(nc) - 0.5
@@ -141,7 +145,6 @@ program cicpower
     enddo
     sync all
     deallocate(xp)
-
     if (head) print*, 'Start sync from buffer regions'
     sync all
     rho_grid(1,:,:)=rho_grid(1,:,:)+rho_grid(ng+1,:,:)[image1d(inx,icy,icz)]
@@ -201,22 +204,25 @@ program cicpower
 
 
 
-  open(15,file=output_dir()//'delta_L'//output_suffix(),status='old',access='stream')
-  read(15) rho_nu
-  close(15)
-  !call cross_power(xi,rho_c,rho_nu)
-    call auto_power(xi,rho_c)
-  sync all
-  if (head) then
-    open(15,file=output_name('cicpower'),status='replace',access='stream')
-    write(15) xi
+    open(15,file=output_dir()//'delta_L'//output_suffix(),status='old',access='stream')
+    read(15) rho_nu
     close(15)
-  endif
-  sync all
+    !call cross_power(xi,rho_c,rho_nu)
+      call auto_power(xi,rho_c)
+      call density_to_potential(rho_c)
+    sync all
+    if (head) then
+      open(15,file=output_name('cicpower'),status='replace',access='stream')
+      write(15) xi
+      close(15)
+    endif
+    sync all
 
 
-#ifdef write_xreal
+#ifdef write_xv
+    write(12) xv
     close(12)
+    deallocate(xv)
 #endif
 
   enddo
