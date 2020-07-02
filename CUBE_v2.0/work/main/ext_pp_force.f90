@@ -150,8 +150,10 @@ subroutine ext_pp_force
     do igy=1,nft
     do igx=1,nft
       ipll1=hoc(igx,igy,igz)
-      f2_max_pp=max(f2_max_pp,sum(af(:,ipll1)**2))
-      ipll1=ll(ipll1)
+      do while (ipll1/=0)
+        f2_max_pp=max(f2_max_pp,sum(af(:,ipll1)**2))
+        ipll1=ll(ipll1)
+      enddo
     enddo
     enddo
     enddo

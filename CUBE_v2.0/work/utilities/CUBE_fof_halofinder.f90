@@ -23,7 +23,8 @@ program CUBE_FoF
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nf_global ! nfof is the resolution to do percolation
   integer,parameter :: ninfo=98 ! number of real numbers per halo in the halo catalog
-  real,parameter :: b_link=0.20 ! linking length
+  real,parameter :: b_link=0.05 ! linking length
+  character(*),parameter :: fof_name='FoF_b0.05'
   real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
 
   type(type_halo_catalog_header) halo_header
@@ -107,7 +108,6 @@ program CUBE_FoF
     open(11,file=output_name('id'),status='old',action='read',access='stream')
     read(11) pid
     close(11)
-    pid=pid-1
 
     print*, '  convert zip format to float format'
     ! xf(1:3,1:np_local) is the position list for all particles
@@ -330,7 +330,7 @@ program CUBE_FoF
         iph_halo_all(nhalo)=hcgp(ip) ! hoc of the halo "ip-header"
         x_mean_all(:,nhalo)=modulo(xf_hoc+sum(dx(:,:np),2)/np,1.) ! center of mass, \in [0,1)
         v_mean_all(:,nhalo)=sum(dv(:,:np),2)/np ! mean velocity
-        q_mean_all(:,nhalo)=modulo(qi_hoc+sum(dq(:,:np),2)/real(np),real(nf_global)) ! q center of mass
+        q_mean_all(:,nhalo)=modulo(qi_hoc-0.5+sum(dq(:,:np),2)/real(np),real(nf_global)) ! q center of mass
         u_mean_all(:,nhalo)=sum(du(:,:np),2)/np
         !if (nhalo==1) then
         !  print*,'q_mean_all',q_mean_all(:,nhalo)
@@ -519,26 +519,22 @@ program CUBE_FoF
     halo_header%nhalo=nhalo
     halo_header%ninfo=ninfo
     halo_header%linking_parameter=b_link
-    print*,'  write', output_name('fof')
-    open(11,file=output_name('fof'),status='replace',access='stream')
-    write(11) halo_header,hcat
-    close(11)
-
-    !! write halo PIDs into file
-    print*,'  write', output_name('fofpid')
-    open(11,file=output_name('fofpid'),status='replace',access='stream')
-    write(11) nhalo ! write nhalo as header
+    print*,'  output ', output_name(fof_name)
+    open(21,file=output_name(fof_name),status='replace',access='stream')
+    write(21) halo_header,hcat ! write header and halo info
     do ihalo=1,nhalo
       jp=iph_halo(ihalo)
-      write(11) nint(hcat(ihalo)%hmass) ! write particle number of halo
       do while (jp/=0)
-        write(11) pid(jp) ! write PID
+        write(21) pid(jp) ! write PID
         jp=llgp(jp)
       enddo
-      flush(11)
+      jp=iph_halo(ihalo)
+      do while (jp/=0)
+        write(21) xf(:,jp),vf(:,jp) ! write Eulerian position and velocity
+        jp=llgp(jp)
+      enddo
     enddo
-    close(11)
-
+    close(21)
     deallocate(iph_halo)
     deallocate(xf,vf,xf_party,hoc,ll,ip_party,ip_friend,llgp,hcgp,ecgp,pos_fof,pid)
     deallocate(dx,dv,dq,du,mu_quj,mu_xvj)
@@ -622,11 +618,12 @@ program CUBE_FoF
 
     function qgrid(pid0)
       implicit none
-      integer pid0,nfg2,qgrid(3)
+      integer pid0,pidtemp,nfg2,qgrid(3)
       nfg2=nf_global**2
-      qgrid(3)=1+pid0/nfg2
-      qgrid(2)=1+(pid0-(pid0/nfg2)*nfg2)/nf_global
-      qgrid(1)=1+modulo(pid0,nf_global)
+      pidtemp=pid0-1
+      qgrid(3)=1+pidtemp/nfg2
+      qgrid(2)=1+(pidtemp-(pidtemp/nfg2)*nfg2)/nf_global
+      qgrid(1)=1+modulo(pidtemp,nf_global)
     endfunction
 
     subroutine indexx(N,ARRIN,INDX)

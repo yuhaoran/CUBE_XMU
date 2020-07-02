@@ -1,7 +1,7 @@
 clear; SetDefault
 format short
 global Redshift Redshift_i Universe Path Dir
-Universe='12';
+Universe='6';
 Redshift_i='100.000';
 Redshift='0.000';
 %Path='/Users/haoran/cloud/CUBE_spin/CUBE_v2.0/output/';
@@ -13,6 +13,7 @@ disp('-------------------------------------------------------------------')
 disp('nf ='); disp(sim.nf)
 disp('box ='); disp(sim.box)
 disp('mass_p ='); disp(sim.mass_p_solar)
+xgrid=[0.5*(sim.box/sim.nf),sim.box-0.5*(sim.box/sim.nf)];
 %% autopower
 n_row_xi=10;
 fid=fopen([Path,Dir,Redshift,'_cicpower_1.bin']);
@@ -20,56 +21,66 @@ fid=fopen([Path,Dir,Redshift,'_cicpower_1.bin']);
 fclose(fid);
 xi=reshape(xi,n_row_xi,numel(xi)/n_row_xi)';
 camb=load('CAMB/pkz0.txt');
-figure(2); loglog(camb(:,1),camb(:,2).*camb(:,1).^3/(2*pi^2),'--',xi(:,2),xi(:,3))
+figure(1); loglog(camb(:,1),camb(:,2).*camb(:,1).^3/(2*pi^2),'--',xi(:,2),xi(:,3))
+%loglog(xi(:,2),xi(:,3))
 grid on; hold on
 %% phi
-if 1
+if 0
   phi1=loadfield3d([Path,Dir,Redshift_i,'_phi1_1.bin']);
-  xgrid=[0.5,sim.box-0.5];
   figure; imagesc(xgrid,xgrid,reshape(-mean(phi1(:,:,:),3),ng,ng)'); hold on
   axis xy square; colorbar; title('$-\phi_1$')
 end
 %% delta_L
 if 1
   delta_L=loadfield3d([Path,Dir,'delta_L_1.bin']);
-  xgrid=[0.5,sim.box-0.5];
   figure; imagesc(xgrid,xgrid,reshape(mean(delta_L(:,:,:),3),ng,ng)'); hold on
   axis xy square; colorbar; caxis([-3,3]); title('$\delta_L$')
+  %colormap(1-gray)
+end
+%% djdm
+if 0
+  djdm=loadfield3d([Path,Dir,Redshift,'_djdm_1.bin']);
+  figure; imagesc(xgrid,xgrid,reshape(mean(djdm(:,:,1:2),3),ng,ng)'); hold on
+  axis xy square; colorbar; %caxis([-3,3]); title('$\delta_L$')
   %colormap(1-gray)
 end
 %% delta_c
 if 1
   Redshift='0.000';
   delta_c=loadfield3d([Path,Dir,Redshift,'_delta_c_1.bin']);
-  xgrid=[0.5,sim.box-0.5];
-  figure; imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,:),3),ng,ng)'); hold on
-  axis xy square; colorbar; caxis([-1,3]); title('$\delta_c$'); colormap(1-gray);
+  figure; imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,1:10),3),ng,ng)'); hold on
+  axis xy square; colorbar; caxis([-1,5]); title('$\delta_c$'); colormap(1-gray);
+  
+  %phi_c=loadfield3d([Path,Dir,Redshift,'_phi_1.bin']);
+  %figure; imagesc(xgrid,xgrid,reshape(-mean(phi_c(:,:,:),3),ng,ng)'); hold on
+  %axis xy square; colorbar; title('$\phi_c$');
 end
 %% delta_E
-if 1
+if 0
   delta_E=loadfield3d([Path,Dir,Redshift,'_delta_E_1.bin']);
-  xgrid=[0.5,sim.box-0.5];
   figure; imagesc(xgrid,xgrid,reshape(mean(delta_E(:,:,:),3),ng,ng)'); hold on
   axis xy square; colorbar; caxis([-3,3]); title('$\delta_E$')
 end
 %colormap(1-gray);
 %% FoF halo catalog
 Redshift='0.000';
+delta_c=loadfield3d([Path,Dir,Redshift,'_delta_c_1.bin']);
 fid=fopen([Path,Dir,Redshift,'_fof_1.bin']);
-  nhalo_tot=fread(fid,1,'integer*4')';
-  nhalo=fread(fid,1,'integer*4')';
-  ninfo=fread(fid,1,'integer*4');
-  linking_parameter=fread(fid,1,'real*4')';
-  hcat=fread(fid,[ninfo,nhalo],'real*4');
-fclose(fid);
+nhalo_tot=fread(fid,1,'integer*4')';
+nhalo=fread(fid,1,'integer*4')';
+ninfo=fread(fid,1,'integer*4');
+linking_parameter=fread(fid,1,'real*4')';
+hcat=fread(fid,[ninfo,nhalo],'real*4');
 n_plot=100;
 if 1
   figure
-  h1=plot3(hcat(2,:),hcat(3,:),hcat(4,:),'k.'); hold on
+  h1=plot3(hcat(2,:)*sim.box/sim.nf,hcat(3,:)*sim.box/sim.nf,hcat(4,:)*sim.box/sim.nf,'k.'); hold on
   h1.MarkerSize=0.1;
-  plot3(hcat(2,1:n_plot),hcat(3,1:n_plot),hcat(4,1:n_plot),'ro')
+  plot3(hcat(2,1:n_plot)*sim.box/sim.nf,hcat(3,1:n_plot)*sim.box/sim.nf,hcat(4,1:n_plot)*sim.box/sim.nf,'ro')
   view([-30 30]);  xlabel('X'); ylabel('Y'); zlabel('Z'); axis equal
   box on
+  imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,:),3),ng,ng)'); hold on
+  axis xy square; colorbar; caxis([-1,3]); colormap(1-gray);
 end
 % alignment statistics
 n1=1; n2=nhalo;
@@ -80,7 +91,123 @@ mean(dot(hcat(14:16,n1:n2),hcat(20:22,n1:n2)))
 mean(dot(hcat(17:19,n1:n2),hcat(20:22,n1:n2)))
 %return
 
-% b
+% FoF PID
+n_plot=3;
+imagesc(xgrid,xgrid,reshape(mean(delta_c(:,:,:),3),ng,ng)'); hold on
+axis xy square; colorbar; caxis([-1,3]); colormap(1-gray);
+for ihalo=1:n_plot
+  nphalo=hcat(1,ihalo);
+  pidhalo=fread(fid,nphalo,'integer*4')';
+  xvp=fread(fid,[6,nphalo],'real*4');
+  qpos=zeros(3,nphalo); % create Lagrangian region array
+  pidhalo=pidhalo-1; % qid will start from 0
+  dx_mean=0;
+  for ip=1:nphalo
+    qpos(3,ip)=floor(pidhalo(ip)/ng^2);
+    qpos(2,ip)=floor((pidhalo(ip)-qpos(3,ip)*ng^2)/ng);
+    %if qpos(2,ip)==355
+    %  pidhalo(ip)
+    %  return
+    %end
+    qpos(1,ip)=mod(pidhalo(ip),ng);
+    qpos(:,ip)=(qpos(:,ip)+0.5);
+  end
+  xvp(1:3,:)=xvp(1:3,:)*sim.box;
+  h=plot3(qpos(1,:)*sim.box/ng,qpos(2,:)*sim.box/ng,qpos(3,:)*sim.box/ng,'.'); 
+  hold on; h.MarkerSize=0.01;
+  h=plot3(xvp(1,:),xvp(2,:),xvp(3,:),'.'); hold on; h.MarkerSize=0.01;
+  xlabel('X'); ylabel('Y'); zlabel('Z'); axis equal; ax=gca;
+  ax.XLim=[0,sim.box];ax.YLim=[0,sim.box];ax.ZLim=[0,sim.box];
+  ax.Box="on"; ax.BoxStyle="full";
+end
+fclose(fid);
+
+% halo density field
+figure(10)
+
+subplot(2,2,1)
+q0=hcat(8:10,ihalo);
+xmin=min(min(mod(qpos-q0+ng/2,ng)-ng/2));
+xmax=max(max(mod(qpos-q0+ng/2,ng)-ng/2));
+hbox=floor(max(abs(xmin),abs(xmax)))+5;
+qden=zeros(1+2*hbox);
+for ip=1:nphalo
+  idx=floor(qpos(:,ip))+1;
+  idx=mod(idx-(floor(q0)+1)+ng/2,ng)-ng/2+floor(hbox)+1;
+  qden(idx(1),idx(2))=qden(idx(1),idx(2))+1;
+end
+xgrid=[-(hbox+1)*sim.box/ng,(hbox+1)*sim.box/ng];
+h=imagesc(xgrid,xgrid,qden'); axis xy equal; colorbar
+ax=gca;
+ax.XLim=[-(hbox+1)*sim.box/ng,(hbox+1)*sim.box/ng];
+ax.YLim=[-(hbox+1)*sim.box/ng,(hbox+1)*sim.box/ng];
+
+subplot(2,2,2)
+x0=hcat(2:4,ihalo);
+xmin=min(min(mod(xvp(1:3,:)*ng/sim.box-x0+ng/2,ng)-ng/2));
+xmax=max(max(mod(xvp(1:3,:)*ng/sim.box-x0+ng/2,ng)-ng/2));
+hbox=floor(max(abs(xmin),abs(xmax)))+2;
+hden=zeros(1+2*hbox);
+for ip=1:nphalo
+  idx=floor(xvp(1:3,ip)*ng/sim.box)+1;
+  idx=idx-(floor(x0)+1)+floor(hbox)+1;
+  hden(idx(1),idx(2))=hden(idx(1),idx(2))+1;
+end
+xgrid=[-(hbox+1)*sim.box/ng,(hbox+1)*sim.box/ng];
+h=imagesc(xgrid,xgrid,hden'); axis xy equal; colorbar
+ax=gca;
+ax.XLim=[-(hbox+1)*sim.box/ng,(hbox+1)*sim.box/ng];
+ax.YLim=[-(hbox+1)*sim.box/ng,(hbox+1)*sim.box/ng];
+% convex hull
+subplot(2,2,3)
+[k,av]=convhull(qpos','Simplify',true);
+h=trimesh(k,qpos(1,:),qpos(2,:),qpos(3,:)); axis equal
+subplot(2,2,4)
+[k,av]=convhull(xvp(1:3,:)','Simplify',true);
+h=trimesh(k,xvp(1,:),xvp(2,:),xvp(3,:)); axis equal
+return
+%% Error 2D plot
+n1=1; n2=nhalo; Nbin=6;
+%X=log10(hcat(1,n1:n2)); Y=hcat(96,n1:n2);
+
+X=hcat(96,n1:n2); Y=dot(hcat(17:19,n1:n2),hcat(20:22,n1:n2));
+%X=dot(hcat(14:16,n1:n2),hcat(20:22,n1:n2)); Y=dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2));
+[xmed,xneg,xpos,ymed,yneg,ypos]=error2d(X,Y,Nbin);
+P=polyfit(X,Y,1); x=[min(X),max(X)]; 
+figure(1)
+h1=plot(X,Y,'.',x,P(1)*x+P(2),'r-'); hold on
+h2=errorbar(xmed,ymed,yneg,ypos,xneg,xpos,'k.');
+label('$f_{je}$','$\mu$');
+h1(1).MarkerSize=0.1; h1(1).Color=[0 0.5 0.8];
+h2.LineWidth=1; h2.LineStyle='none'; h2.MarkerSize=16;
+ax1=gca; 
+ax1.XLim=[xmed(1)-3*xneg(1),xmed(Nbin)+3*xpos(Nbin)]; 
+ax1.YLim=[ymed(1)-3*yneg(1),ymed(Nbin)+3*ypos(Nbin)]; 
+%%
+%plot(hcat(1,:),b,'.')
+%plot(b(n1:n2),dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2)),'.')
+%plot(hcat(96,:),hcat(95,:),'.')
+%plot(b,hcat(96,:),'.')
+X=b(n1:n2); Y=hcat(96,n1:n2);
+P=polyfit(X,Y,1); x=[min(X),max(X)]; figure; plot(X,Y,'.',x,P(1)*x+P(2),'r-')
+label('$\beta$','$f_{jl}$')
+X=b(n1:n2); Y=dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2));
+P=polyfit(X,Y,1); x=[min(X),max(X)]; figure; plot(X,Y,'.',x,P(1)*x+P(2),'r-')
+label('$\beta$','$\mu_{q0}$')
+
+X=hcat(96,n1:n2); Y=hcat(95,n1:n2);
+P=polyfit(X,Y,1); x=[min(X),max(X)]; figure; plot(X,Y,'.',x,P(1)*x+P(2),'r-')
+label('$f_{jq}$','$f_{je}$')
+X=hcat(96,n1:n2); Y=dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2));
+P=polyfit(X,Y,1); x=[min(X),max(X)]; figure; plot(X,Y,'.',x,P(1)*x+P(2),'r-')
+label('$f_{jq}$','$\mu_{q0}$')
+X=hcat(95,n1:n2); Y=dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2));
+P=polyfit(X,Y,1); x=[min(X),max(X)]; figure; plot(X,Y,'.',x,P(1)*x+P(2),'r-')
+label('$f_{je}$','$\mu_{q0}$')
+X=dot(hcat(14:16,n1:n2),hcat(20:22,n1:n2)); Y=dot(hcat(14:16,n1:n2),hcat(17:19,n1:n2));
+P=polyfit(X,Y,1); x=[min(X),max(X)]; figure; plot(X,Y,'.',x,P(1)*x+P(2),'r-')
+label('$\mu_{lt}$','$\mu_{l0}$')
+%% b (alignment with x,y,z axis)
 n1=1; n2=nhalo;
 disp('Lagrangian b_1, b_2, b_3')
 disp(mean(hcat(14:16,n1:n2).^2,2)-1/3)
@@ -123,7 +250,8 @@ for ihbin=1:nhbin
   h=plot(pdfx,pdfy); hold on
   hcolor=[1 1 1]-[0.06 0.1 0.06]*ihbin;
   h.Color=hcolor; h.LineWidth=2.5;
-  lname=['$M/M_\odot\in\,$[',num2str(hmass_lim(ihbin),'%6.1e'),',',num2str(hmass_lim(ihbin+1),'%6.1e'),'], $\langle\mu\rangle=$',num2str(mu_mean,'%6.2f')];
+  lname=['$M/M_\odot\in\,$[',num2str(hmass_lim(ihbin),'%6.1e'),',', ...
+    num2str(hmass_lim(ihbin+1),'%6.1e'),'], $\langle\mu\rangle=$',num2str(mu_mean,'%6.2f')];
   eval(['t',num2str(ihbin),'=lname;'])
 end
 h=legend(t1,t2,t3,t4,t5,t6,t7,t8,t9); h.FontSize=14; h.Location='northwest';
@@ -145,34 +273,7 @@ mu(3,:)=dot(hcat(17:19,:),hcat(20:22,:));
 
 figure; plot3(ellip,prol,mu(1,:),'.'); box on; 
 xlabel('$e$'),ylabel('$p$'),zlabel('$\mu$')
-%% FoF PID
-n_plot=1;
-fid=fopen([Path,Dir,Redshift,'_fofpid_1.bin']);
-  nhalo_fof=fread(fid,1,'integer*4')';
-  for ihalo=1:n_plot
-    nphalo=fread(fid,1,'integer*4')';
-    pidhalo=fread(fid,nphalo,'integer*4')';
-    qpos=zeros(3,nphalo); % create Lagrangian region array
-    pidhalo=pidhalo-1; % qid will start from 0
-    dx_mean=0;
-    for ip=1:nphalo
-      qpos(3,ip)=floor(pidhalo(ip)/ng^2);
-      qpos(2,ip)=floor((pidhalo(ip)-qpos(3,ip)*ng^2)/ng);
-      qpos(1,ip)=mod(pidhalo(ip),ng);
-      qpos(:,ip)=(qpos(:,ip)+0.5)*sim.box/ng;
-      %idx=ceil(qpos(1,ip))*2-1;
-      %idy=ceil(qpos(2,ip))*2-1;
-      %if ihalo==n_halo_plot
-      %  rhoq(idx:idx+1,idy:idy+1)=rhoq(idx:idx+1,idy:idy+1)+1;
-      %end
-      %dx=qpos(:,ip)-haloinfo(7:9,ihalo);
-      %dx=mod(dx+ng/2,ng)-ng/2;
-      %dx_mean=dx_mean+dx;
-    end
-    plot3(qpos(1,:),qpos(2,:),qpos(3,:),'.')
-  end
-fclose(fid);
-return
+
 %% SO halo catalog
 ninfo=42;
 fid=fopen([Path,Dir,Redshift,'_halo_1.bin']);
