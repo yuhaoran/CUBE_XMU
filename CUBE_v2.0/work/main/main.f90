@@ -46,7 +46,8 @@ program main
       call buffer_x
       call buffer_v
       if (halofind_step) then
-        call halofind
+        !call halofind_SO
+        call halofind_FoF
         sim%cur_halofind=sim%cur_halofind+1
       endif
       call print_header(sim)

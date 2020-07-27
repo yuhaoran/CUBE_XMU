@@ -15,7 +15,7 @@ module halo_output
   endtype
 endmodule
 
-subroutine halofind
+subroutine halofind_SO
   use omp_lib
   use variables
   use halo_output
@@ -66,7 +66,7 @@ subroutine halofind
   real(4) los(3),sx(3)
 
   if (head) print*, ''
-  if (head) print*, 'halofind'
+  if (head) print*, 'halofind SO'
 
   allocate(rhof(1-nfb:nft+nfb,1-nfb:nft+nfb,1-nfb:nft+nfb))
   allocate(hid(nc**3/8),p_tag(np_image_max),halo_mesh_mass(n_peak_max))

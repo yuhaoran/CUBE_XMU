@@ -10,8 +10,8 @@ module halo_output
     real,dimension(3,3) :: tide,xx,qq,vv,uu ! 2nd order stat ! 26:70
     real lambda_qq(3),vec_qq(3,3) ! eigenvalue/vector of qq ! 71:82
     real lambda_tide(3),vec_tide(3,3) ! eigenvalue/vector of tide ! 83:94
-    real spin_ratio_e,spin_ratio_l ! 95:96
-    real lam_e,lam_l ! 97:98
+    real spin_ratio_e,spin_ratio_l ! kinematic spin parameter 95:96
+    real lam_e,lam_l ! 97:98 ! Bullock spin parameter
   endtype
 endmodule
 
@@ -23,8 +23,8 @@ program CUBE_FoF
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nf_global ! nfof is the resolution to do percolation
   integer,parameter :: ninfo=98 ! number of real numbers per halo in the halo catalog
-  real,parameter :: b_link=0.05 ! linking length
-  character(*),parameter :: fof_name='FoF_b0.05'
+  real,parameter :: b_link=0.2 ! linking length
+  character(4) b_link_string
   real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
 
   type(type_halo_catalog_header) halo_header
@@ -34,7 +34,7 @@ program CUBE_FoF
   integer i,j,k,l,itx,ity,itz,nlast,ip,jp,np,nplocal,nlist,idx(3),n_friend,ngroup,ihalo,nhalo
   integer iq1,iq2,iq3,np_candidate,np_central,pbc(3),jq(3),is1,is2,qi(3),qi_hoc(3)
   integer(4) t1,t2,tt1,tt2,t_rate
-  real pos1(3),rp,rp2,rsq,xf_hoc(3),vreal(3),torque(3,3),tide(6),jeig(3),t_opt(3),a_opt
+  real pos1(3),rp,rp2,rsq,xf_hoc(3),vreal(3),torque(3,3),tide(6),jeig(3),t_opt(3),a_opt,r_equiv,msim2phys
   real mu_qj,mu_uj,mu_xj,mu_vj,mu_qu,mu_xv,sj(3)
 
   integer(4),allocatable :: rhoc(:,:,:,:,:,:)
@@ -51,9 +51,14 @@ program CUBE_FoF
 
   real,dimension(3,3) :: qq_halo,tide_halo
   real,dimension(3,3,3) :: dd,qq
+  real,parameter :: lsim2pc=1e6 * box/nf_global/h0
+  real,parameter :: G_phys=0.0043 ! pc * M_solar^-1 * (km/s)^2
+  real,parameter :: rho_crit=2.7756e11 ! M_solar Mpc^-3 h^-2
+  real,parameter :: grid_per_p=(ncell/np_nc)**3 * merge(2,1,body_centered_cubic)
 
   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   call geometry
+  write(b_link_string,'(f4.2)') b_link
   if (head) then
     print*,'External CUBE_FoF halofinder'
     print*,'nc,nnt,nt,ng,nf='
@@ -62,7 +67,7 @@ program CUBE_FoF
     print*,int(nfof,2)
     print*,'np_halo_min='
     print*,np_halo_min
-
+    print*,'output file =', output_name('FoF_b'//b_link_string)
     print*, 'checkpoints:'
     open(16,file='../main/z_checkpoint.txt',status='old')
     do i=1,nmax_redshift
@@ -78,7 +83,7 @@ program CUBE_FoF
   z_checkpoint(:)=z_checkpoint(:)[1]
   sync all
 
-  do cur_checkpoint= n_checkpoint,n_checkpoint
+  do cur_checkpoint= 1,n_checkpoint
     sim%cur_checkpoint=cur_checkpoint
     print*, ''
     print*, 'start analyzing redshift ',z2str(z_checkpoint(cur_checkpoint))
@@ -88,6 +93,8 @@ program CUBE_FoF
     read(11) sim
     close(11)
     nplocal=sim%nplocal;    print*, '  nplocal=',nplocal
+    msim2phys=rho_crit*sim%omega_m*sim%box**3/sim%npglobal/sim%h0;  
+    print*,'  msim2phys',msim2phys
     nlist=nplocal/8
 
     ! allocate checkpoint arrays
@@ -423,13 +430,15 @@ program CUBE_FoF
         / sum(sqrt(sum(dq(:,:np)**2,1)) * sqrt(sum(du(:,:np)**2,1)))
       hcat(ihalo)%spin_ratio_e=sum(sqrt(sum(dx(:,:np)**2,1)) * sqrt(sum(dv(:,:np)**2,1)) * mu_xvj(:np)) &
         / sum(sqrt(sum(dx(:,:np)**2,1)) * sqrt(sum(dv(:,:np)**2,1)))
-      if (.false.) then
-        print*,ihalo,np
-        print*,hcat(ihalo)%spin_ratio_l,norm2(hcat(ihalo)%jl)
-        print*,hcat(ihalo)%spin_ratio_e,norm2(hcat(ihalo)%je)
-      endif
       hcat(ihalo)%lam_l = norm2(hcat(ihalo)%jl) * hcat(ihalo)%hmass**(-5./3.)
-      hcat(ihalo)%lam_e = sqrt(3*pi)*norm2(hcat(ihalo)%je)/hcat(ihalo)%hmass**1.5/ (hcat(ihalo)%hmass/(300*pi))**(1./6.)
+
+      r_equiv=(hcat(ihalo)%hmass * grid_per_p * 3/800/pi)**(1./3.) * lsim2pc
+      hcat(ihalo)%lam_e = norm2(hcat(ihalo)%je)/hcat(ihalo)%hmass * (sim%vsim2phys*lsim2pc*nf_global)
+      hcat(ihalo)%lam_e = hcat(ihalo)%lam_e / sqrt(2*G_phys*hcat(ihalo)%hmass*msim2phys* r_equiv)
+
+      r_equiv=(hcat(ihalo)%hmass * grid_per_p * 3/4/pi)**(1./3.) * lsim2pc
+      !hcat(ihalo)%lam_l = norm2(hcat(ihalo)%jl)/hcat(ihalo)%hmass * (sim%vsim2phys*lsim2pc*nf_global)
+      !hcat(ihalo)%lam_l = hcat(ihalo)%lam_e / sqrt(2*G_phys*hcat(ihalo)%hmass*msim2phys* r_equiv)
 
       hcat(ihalo)%je=hcat(ihalo)%je/norm2(hcat(ihalo)%je)
       hcat(ihalo)%jl=hcat(ihalo)%jl/norm2(hcat(ihalo)%jl)
@@ -514,13 +523,12 @@ program CUBE_FoF
       deallocate(isort_mass)
     endif
 
-    !! write halo catalog consistent with CUBE_SO halofiner
+    !! write halo catalog
     halo_header%nhalo_tot=nhalo
     halo_header%nhalo=nhalo
     halo_header%ninfo=ninfo
     halo_header%linking_parameter=b_link
-    print*,'  output ', output_name(fof_name)
-    open(21,file=output_name(fof_name),status='replace',access='stream')
+    open(21,file=output_name('FoF_b'//b_link_string),status='replace',access='stream')
     write(21) halo_header,hcat ! write header and halo info
     do ihalo=1,nhalo
       jp=iph_halo(ihalo)

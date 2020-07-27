@@ -14,16 +14,16 @@ subroutine ext_pp_force
 
   integer ilayer
   integer(8) ntest,ip_offset,ipll1,ipll2,it1,it2
-  !integer hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell)
-  !integer ll(np_pp_max)
   integer,allocatable :: ll(:),hoc(:,:,:)
   integer idxf,ipp1,ipp2
-  !real xf(3,np_pp_max),vf(3,np_pp_max),af(3,np_pp_max)
   integer,allocatable :: ipf(:),ift1(:)
   real,allocatable :: xf(:,:),vf(:,:),af(:,:)
-  real ftemp
+  integer :: ipll1_list(10240*14*3)
+  real :: x_tmp(10240*14*8,3),force_tmp(10240*14*8,3)
+  integer :: ipll1_size, ipll2_size
 
-  integer icellpp,ncellpp,ijk(3,62)
+
+  integer icellpp,icellpp2,ncellpp,ijk(3,62)
 
   if (head) then
     print*, ''
@@ -101,42 +101,52 @@ subroutine ext_pp_force
     !$omp paralleldo &
     !$omp& default(shared) schedule(dynamic,1)&
     !$omp& private(igz,igy,igx,ipll1,ipll2,xvec21,rmag,rcut,pcut) &
-    !$omp& private(force_pp,icellpp)
+    !$omp& private(force_pp,icellpp,icellpp2,ipll1_size,ipll2_size,ipll1_list,x_tmp,force_tmp)
     do igz=1+ilayer,nft+pp_range,pp_range+1
-    !do igz=1,nft+pp_range
     do igy=1-pp_range,nft+pp_range
     do igx=1-pp_range,nft+pp_range
+      ipll1_size=0
       ipll1=hoc(igx,igy,igz)
-      do while (ipll1/=0) ! central cell
-        ipll2=ll(ipll1) ! next particle after ipll1
+      do while (ipll1/=0)
+        ipll1_size=ipll1_size+1
+        ipll1_list(ipll1_size)=ipll1
+        ipll1=ll(ipll1)
+      enddo
+      if( ipll1_size==0 ) then
+        cycle
+      endif
+
+      ipll2_size=ipll1_size
+
+      do icellpp=1,ncellpp
+        ipll2=hoc(igx+ijk(1,icellpp),igy+ijk(2,icellpp),igz+ijk(3,icellpp))
         do while (ipll2/=0)
-          xvec21=xf(:,ipll2)-xf(:,ipll1)
-          rmag=sqrt(sum(xvec21**2))
-          rmag=merge(1d0,rmag,rmag==0)
-          rcut=rmag/nf_cutoff
-          pcut=1-(7./4*rcut**3)+(3./4*rcut**5)
-          force_pp=sim%mass_p_cdm*(xvec21/rmag**3)*pcut
-          force_pp=merge(force_pp,force_pp*0,rmag>rsoft)
-          af(:,ipll1)=af(:,ipll1)+force_pp
-          af(:,ipll2)=af(:,ipll2)-force_pp
-          ipll2=ll(ipll2) ! next particle in central cell
+          ipll2_size=ipll2_size+1
+          ipll1_list(ipll2_size)=ipll2
+          ipll2=ll(ipll2)
         enddo
-        do icellpp=1,ncellpp ! loop over surrounding cells
-          ipll2=hoc(igx+ijk(1,icellpp),igy+ijk(2,icellpp),igz+ijk(3,icellpp))
-          do while (ipll2/=0)
-            xvec21=xf(:,ipll2)-xf(:,ipll1)
-            rmag=sqrt(sum(xvec21**2))
-            rmag=merge(1d0,rmag,rmag==0)
-            rcut=rmag/nf_cutoff
-            pcut=1-(7./4*rcut**3)+(3./4*rcut**5)
-            force_pp=sim%mass_p_cdm*(xvec21/rmag**3)*pcut
-            force_pp=merge(force_pp,force_pp*0,rmag>rsoft)
-            af(:,ipll1)=af(:,ipll1)+force_pp
-            af(:,ipll2)=af(:,ipll2)-force_pp
-            ipll2=ll(ipll2) ! next particle after ipll2 in surrounding cell
-          enddo
+      enddo
+      
+      do icellpp=1,ipll2_size
+        x_tmp(icellpp,:)=xf(:,ipll1_list(icellpp))
+      enddo
+      force_tmp(:ipll2_size+1,:)=0
+
+      !kernel
+      do icellpp=1,ipll1_size
+        do icellpp2=icellpp+1,ipll2_size
+          xvec21=x_tmp(icellpp2,:)-x_tmp(icellpp,:)
+          rmag=sum(xvec21**2)+rsoft*rsoft
+          rcut=rmag*rmag*rmag
+          pcut=sim%mass_p_cdm/sqrt(rcut)
+          force_pp=xvec21*pcut
+          force_tmp(icellpp,:)=force_tmp(icellpp,:)+force_pp
+          force_tmp(icellpp2,:)=force_tmp(icellpp2,:)-force_pp
         enddo
-        ipll1=ll(ipll1) ! next ipll1
+      enddo
+
+      do icellpp=1,ipll2_size
+        af(:,ipll1_list(icellpp))=af(:,ipll1_list(icellpp))+force_tmp(icellpp,:)
       enddo
     enddo
     enddo
@@ -168,15 +178,6 @@ subroutine ext_pp_force
       ip1=ipf(ipp1)+ip_offset
       vreal=vf(:,ipp1)+af(:,ipp1)*a_mid*dt/6/pi
       vp(:,ip1)=nint(real(nvbin-1)*atan(sqrt(pi/2)/(sigma_vi*vrel_boost)*vreal)/pi,kind=izipv)
-      !if (ip1==78049) then
-      !  print*,'ipp1,ip1',ipp1,ip1
-      !  print*,'xf1',xf(:,ipp1)
-      !  print*,'vf1',vf(:,ipp1)
-      !  print*,'af1',sum(af(:,ipp1)**2)
-      !  print*,'vreal',vreal
-      !  print*,vp(:,ip1)
-
-      !endif
     enddo
     !$omp endparalleldo
     call system_clock(t_vp2,t_rate)

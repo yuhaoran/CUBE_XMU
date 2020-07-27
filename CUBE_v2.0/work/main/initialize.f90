@@ -43,8 +43,8 @@ subroutine initialize
   da=0
   sim%cur_checkpoint=1 ! change for resuming checkpoints
   sim%cur_halofind=1
-  z_checkpoint=-0.5
-  z_checkpoint=-0.5
+  z_checkpoint=-9999
+  z_halofind=-9999
   checkpoint_step=.false.
   halofind_step=.false.
   final_step=.false.

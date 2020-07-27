@@ -9,7 +9,8 @@ program lpt
   save
 
   integer,parameter :: ngrid=ng
-
+  real,parameter :: b_link=0.2 ! linking length
+  character(4) b_link_string
   character(300) fn_phi,fn_out,fn_raw
   integer(4) t1,t2,tt1,tt2,t_rate,nhalo,ihalo,hgrid(3),ninfo
   integer(8) kg,jg,ig,ir,jj,imassbin,cur_checkpoint
@@ -37,6 +38,7 @@ program lpt
 
   !call omp_set_num_threads(ncore)
   !call geometry
+  write(b_link_string,'(f4.2)') b_link
   image=1
   open(16,file='../main/z_checkpoint.txt',status='old')
   do i=1,nmax_redshift
@@ -72,8 +74,8 @@ program lpt
   ! open halo catalog
   print*,''
   sim%cur_checkpoint=n_checkpoint
-  print*,'read halo catalog ',output_name('fof')
-  open(11,file=output_name('fof'),status='old',access='stream')
+  print*,'read halo catalog ',output_name('FoF_b'//b_link_string)
+  open(11,file=output_name('FoF_b'//b_link_string),status='old',access='stream')
   read(11) fof_header
   nhalo=fof_header%nhalo; ninfo=fof_header%ninfo
   allocate(hcat(nhalo))
@@ -112,8 +114,9 @@ program lpt
     if (hcat(ihalo)%hmass<hcat(nhalo)%hmass*rm**itemp .or. imassbin==1) then
       i1(imassbin)=ihalo ! still in the bin
     else
-      imassbin=imassbin-1 ! assign to previous bin
+      imassbin=imassbin-1 ! (must) assign to previous bin
       i2(imassbin)=ihalo
+      i1(imassbin)=ihalo
       itemp=itemp+1
     endif
   enddo
