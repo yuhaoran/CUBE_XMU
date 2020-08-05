@@ -22,7 +22,7 @@ module parameters
   ! (hereafter 'number of coarse cells' = 'nc')
   ! (hereafter 'per dimension' = '/dim')
   integer(8),parameter :: nn=1 ! number of imgages (nodes) /dim
-  integer(8),parameter :: ncore=12
+  integer(8),parameter :: ncore=32
   integer(8),parameter :: n_nest=1 ! number of nested threads
   integer(8),parameter :: ncell=4 ! number of nf in each nc, /dim
   integer(8),parameter :: nnt=2 ! number of tiles /image/dim
@@ -67,8 +67,8 @@ module parameters
   real,parameter :: pi=4*atan(1.)
 
   ! cosmological parameters
-  real,parameter :: box=200*nn  ! simulation scale /dim, in unit of Mpc/h
-  real,parameter :: s8=0.8 ! use -Dsigma_8 in initial_conditions
+  real,parameter :: box=300*nn  ! simulation scale /dim, in unit of Mpc/h
+  real,parameter :: s8=0.875256240 ! use -Dsigma_8 in initial_conditions
   integer,parameter :: zdim=2 ! the dimension being the redhisft direction
 
   real,parameter :: z_i_nu=5.0 ! initial redshift for neutrinos
@@ -80,7 +80,7 @@ module parameters
   real, parameter :: Tcnb = (4./11.)**(1./3.)*Tcmb ! temperature for active neutrinos
 
   integer, parameter :: Nnu = 3 ! number of massive neutrinos
-  real, dimension(Nnu), parameter :: Mnu = (/ 0.05,0.,0. /)
+  real, dimension(Nnu), parameter :: Mnu = (/ 0.,0.,0. /)
   real, dimension(Nnu), parameter :: Tnu = (/ Tcnb,Tcnb,Tcnb /)
   real, parameter :: Meff = sum( Mnu*(Tnu/Tcnb)**3. )
 
@@ -89,14 +89,14 @@ module parameters
   real, parameter :: Neff = Nur*(Tur/Tcnb)**4.
 
   ! background parameters
-  real, parameter :: h0 = 0.72
+  real, parameter :: h0 = 0.7
 
   real, parameter :: omega_g = 2.471*10**(-5.)/h0**2. ! photon energy
   real, parameter :: omega_u = Nur*(7.*pi**4/180.)*Tur*(Tur/Tcnb)**3./94.1/h0**2 ! ur energy
   real, parameter :: omega_r = omega_g+omega_u ! total radiation
 
-  real, parameter :: omega_cdm = 0.214 ! cdm energy
-  real, parameter :: omega_bar = 0.044 ! baryon energy, goes into cdm
+  real, parameter :: omega_cdm = 0.2538 ! cdm energy
+  real, parameter :: omega_bar = 0.0462 ! baryon energy, goes into cdm
   real, parameter :: omega_mhd = 0.0 ! mhd energy, evolved separately
   real, parameter :: omega_nu = sum( Mnu*(Tnu/Tcnb)**3 )/94.1/h0**2 ! nu energy
   real, parameter :: omega_m = omega_cdm+omega_bar+omega_mhd+omega_nu ! total matter
@@ -110,11 +110,11 @@ module parameters
   ! initial conditions
   real,parameter :: f_nl=0
   real,parameter :: g_nl=0
-  real,parameter :: n_s=0.9619
-  real,parameter :: A_s=2.215e-9
+  real,parameter :: n_s=0.96
+  real,parameter :: A_s=2.46e-9
   real,parameter :: k_o=0.05/h0
 
-  integer(8),parameter :: istep_max=2500
+  integer(8),parameter :: istep_max=250000
   real,parameter :: ra_max=0.2
   real(8),parameter :: v_resolution=2.1/(int(2,8)**(izipv*8))
   real(8),parameter :: x_resolution=1.0/(int(2,8)**(izipx*8))

@@ -23,7 +23,7 @@ program CUBE_FoF
   !! smaller nfof is memory-lite but time-consuming
   integer,parameter :: nfof=nf_global ! nfof is the resolution to do percolation
   integer,parameter :: ninfo=98 ! number of real numbers per halo in the halo catalog
-  real,parameter :: b_link=0.2 ! linking length
+  real,parameter :: b_link=0.20 ! linking length
   character(4) b_link_string
   real,parameter :: np_halo_min=100 ! minimum number of particles to be a halo
 
@@ -461,6 +461,8 @@ program CUBE_FoF
       hcat(ihalo)%jt(1)=torque(2,3)-torque(3,2)
       hcat(ihalo)%jt(2)=torque(3,1)-torque(1,3)
       hcat(ihalo)%jt(3)=torque(1,2)-torque(2,1)
+      hcat(ihalo)%lam_l=norm2(hcat(ihalo)%jt)/sum(hcat(ihalo)%qq*hcat(ihalo)%tide)
+
       hcat(ihalo)%jt=hcat(ihalo)%jt/norm2(hcat(ihalo)%jt)
       ! eigen decomposition
       !print*,'eigenvalue'
