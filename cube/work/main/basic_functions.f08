@@ -7,7 +7,7 @@ subroutine geometry
   m1=icx ! pencil_fft convension
   m2=icy
   m3=icz
-  m=num_images()
+  !m=num_images()
   ! adjacent images
   inx=modulo(icx-2,nn)+1
   iny=modulo(icy-2,nn)+1
@@ -20,10 +20,10 @@ subroutine geometry
   sync all
 endsubroutine
 
-pure elemental integer(8) function image1d(cx,cy,cz)
-  integer(8), intent(in) :: cx,cy,cz
-  image1d=cx+nn*(cy-1)+nn**2*(cz-1)
-endfunction
+!pure elemental integer(8) function image1d(cx,cy,cz)
+!  integer(8), intent(in) :: cx,cy,cz
+!  image1d=cx+nn*(cy-1)+nn**2*(cz-1)
+!endfunction
 
 pure function image2str(nimage)
   character(:),allocatable :: image2str

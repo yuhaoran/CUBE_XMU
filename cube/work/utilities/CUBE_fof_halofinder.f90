@@ -38,7 +38,7 @@ program CUBE_FoF
   real mu_qj,mu_uj,mu_xj,mu_vj,mu_qu,mu_xv,sj(3)
 
   integer(4),allocatable :: rhoc(:,:,:,:,:,:)
-  real(4),allocatable :: vfield(:,:,:,:,:,:,:),phi(:,:,:)[:]
+  real(4),allocatable :: vfield(:,:,:,:,:,:,:),phi(:,:,:)[:,:,:]
   integer(izipx),allocatable :: xp(:,:)
   integer(izipv),allocatable :: vp(:,:)
   integer(4),allocatable :: pid(:),iph_halo_all(:),iph_halo(:)
@@ -293,20 +293,20 @@ program CUBE_FoF
 
     sim%cur_checkpoint=1
     print*,'  read initial potential field',output_name('phi1')
-    allocate(phi(0:nf+1,0:nf+1,0:nf+1)[*])
+    allocate(phi(0:nf+1,0:nf+1,0:nf+1)[nn,nn,*])
     open(11,file=output_name('phi1'),status='old',action='read',access='stream')
     read(11) phi(1:nf,1:nf,1:nf)
     close(11)
     sim%cur_checkpoint=cur_checkpoint
     print*, '  buffer phi'
-    phi(0,:,:)=phi(nf,:,:)[image1d(inx,icy,icz)]
-    phi(nf+1,:,:)=phi(1,:,:)[image1d(ipx,icy,icz)]
+    phi(0,:,:)=phi(nf,:,:)[inx,icy,icz]
+    phi(nf+1,:,:)=phi(1,:,:)[ipx,icy,icz]
     sync all
-    phi(:,0,:)=phi(:,nf,:)[image1d(icx,iny,icz)]
-    phi(:,nf+1,:)=phi(:,1,:)[image1d(icx,ipy,icz)]
+    phi(:,0,:)=phi(:,nf,:)[icx,iny,icz]
+    phi(:,nf+1,:)=phi(:,1,:)[icx,ipy,icz]
     sync all
-    phi(:,:,0)=phi(:,:,nf)[image1d(icx,icy,inz)]
-    phi(:,:,nf+1)=phi(:,:,1)[image1d(icx,icy,ipz)]
+    phi(:,:,0)=phi(:,:,nf)[icx,icy,inz]
+    phi(:,:,nf+1)=phi(:,:,1)[icx,icy,ipz]
 
     nhalo=0;
     do ip=1,nplocal

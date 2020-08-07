@@ -29,8 +29,8 @@ subroutine buffer_xvp(dox,dov)
 
   if (head) print*, 'buffer_xvp'
   call system_clock(t1,t_rate)
-  myzl=pprl(:,:,nnt,:,:)[image1d(inx,icy,icz)]
-  myzr=ppr0(:,:,nnt,:,:)[image1d(inx,icy,icz)]
+  myzl=pprl(:,:,nnt,:,:)[inx,icy,icz]
+  myzr=ppr0(:,:,nnt,:,:)[inx,icy,icz]
   sync all
   do itz=1,nnt
   do ity=1,nnt
@@ -40,13 +40,13 @@ subroutine buffer_xvp(dox,dov)
     do iy=1,nt
       if (dox) &
       xp(:,idx_b_l(iy,iz,itx,ity,itz)+1:ppl0(iy,iz,itx,ity,itz))=&
-      xp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[image1d(inx,icy,icz)]
+      xp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[inx,icy,icz]
       if (dov) then
         vp(:,idx_b_l(iy,iz,itx,ity,itz)+1:ppl0(iy,iz,itx,ity,itz))=&
-        vp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[image1d(inx,icy,icz)]
+        vp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[inx,icy,icz]
 #ifdef PID
         pid(idx_b_l(iy,iz,itx,ity,itz)+1:ppl0(iy,iz,itx,ity,itz))=&
-        pid(myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[image1d(inx,icy,icz)]
+        pid(myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[inx,icy,icz]
 #endif
       endif
     enddo
@@ -84,8 +84,8 @@ subroutine buffer_xvp(dox,dov)
   sync all
 
   ! sync x+ buffer with node on the right
-  myzl=ppl0(:,:,1,:,:)[image1d(ipx,icy,icz)]
-  myzr=pplr(:,:,1,:,:)[image1d(ipx,icy,icz)]
+  myzl=ppl0(:,:,1,:,:)[ipx,icy,icz]
+  myzr=pplr(:,:,1,:,:)[ipx,icy,icz]
   sync all
   do itz=1,nnt
   do ity=1,nnt
@@ -95,13 +95,13 @@ subroutine buffer_xvp(dox,dov)
     do iy=1,nt
       if (dox) &
       xp(:,ppr0(iy,iz,itx,ity,itz)+1:idx_b_r(iy,iz,itx,ity,itz))=&
-      xp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[image1d(ipx,icy,icz)]
+      xp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[ipx,icy,icz]
       if (dov) then
         vp(:,ppr0(iy,iz,itx,ity,itz)+1:idx_b_r(iy,iz,itx,ity,itz))=&
-        vp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[image1d(ipx,icy,icz)]
+        vp(:,myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[ipx,icy,icz]
 #ifdef PID
         pid(ppr0(iy,iz,itx,ity,itz)+1:idx_b_r(iy,iz,itx,ity,itz))=&
-        pid(myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[image1d(ipx,icy,icz)]
+        pid(myzl(iy,iz,ity,itz)+1:myzr(iy,iz,ity,itz))[ipx,icy,icz]
 #endif
       endif
     enddo
@@ -140,8 +140,8 @@ subroutine buffer_xvp(dox,dov)
 
   ! buffer y direction
   ! sync y-
-  mzl=idx_b_l(nt-ncb+1,:,:,nnt,:)[image1d(icx,iny,icz)]
-  mzr=idx_b_r(nt,:,:,nnt,:)[image1d(icx,iny,icz)]
+  mzl=idx_b_l(nt-ncb+1,:,:,nnt,:)[icx,iny,icz]
+  mzr=idx_b_r(nt,:,:,nnt,:)[icx,iny,icz]
   sync all
   do itz=1,nnt
   do ity=1,1 ! do only ity=1
@@ -150,13 +150,13 @@ subroutine buffer_xvp(dox,dov)
     do iz=1,nt
       if (dox) &
       xp(:,idx_b_l(1-ncb,iz,itx,ity,itz)+1:idx_b_r(0,iz,itx,ity,itz))=&
-      xp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[image1d(icx,iny,icz)]
+      xp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[icx,iny,icz]
       if (dov) then
         vp(:,idx_b_l(1-ncb,iz,itx,ity,itz)+1:idx_b_r(0,iz,itx,ity,itz))=&
-        vp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[image1d(icx,iny,icz)]
+        vp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[icx,iny,icz]
 #ifdef PID
         pid(idx_b_l(1-ncb,iz,itx,ity,itz)+1:idx_b_r(0,iz,itx,ity,itz))=&
-        pid(mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[image1d(icx,iny,icz)]
+        pid(mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[icx,iny,icz]
 #endif
       endif
     enddo
@@ -191,8 +191,8 @@ subroutine buffer_xvp(dox,dov)
   sync all
 
   ! sync y+
-  mzl=idx_b_l(1,:,:,1,:)[image1d(icx,ipy,icz)]
-  mzr=idx_b_r(ncb,:,:,1,:)[image1d(icx,ipy,icz)]
+  mzl=idx_b_l(1,:,:,1,:)[icx,ipy,icz]
+  mzr=idx_b_r(ncb,:,:,1,:)[icx,ipy,icz]
   sync all
   do itz=1,nnt
   do ity=nnt,nnt ! do only ity=nnt
@@ -201,13 +201,13 @@ subroutine buffer_xvp(dox,dov)
     do iz=1,nt
       if (dox) &
       xp(:,idx_b_l(nt+1,iz,itx,ity,itz)+1:idx_b_r(nt+ncb,iz,itx,ity,itz))=&
-      xp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[image1d(icx,ipy,icz)]
+      xp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[icx,ipy,icz]
       if (dov) then
         vp(:,idx_b_l(nt+1,iz,itx,ity,itz)+1:idx_b_r(nt+ncb,iz,itx,ity,itz))=&
-        vp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[image1d(icx,ipy,icz)]
+        vp(:,mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[icx,ipy,icz]
 #ifdef PID
         pid(idx_b_l(nt+1,iz,itx,ity,itz)+1:idx_b_r(nt+ncb,iz,itx,ity,itz))=&
-        pid(mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[image1d(icx,ipy,icz)]
+        pid(mzl(iz,itx,itz)+1:mzr(iz,itx,itz))[icx,ipy,icz]
 #endif
       endif
     enddo
@@ -243,8 +243,8 @@ subroutine buffer_xvp(dox,dov)
 
   ! buffer z direction
   ! sync z-
-  ml=idx_b_l(1-ncb,nt-ncb+1,:,:,nnt)[image1d(icx,icy,inz)]
-  mr=idx_b_r(nt+ncb,nt,:,:,nnt)[image1d(icx,icy,inz)]
+  ml=idx_b_l(1-ncb,nt-ncb+1,:,:,nnt)[icx,icy,inz]
+  mr=idx_b_r(nt+ncb,nt,:,:,nnt)[icx,icy,inz]
   sync all
   do itz=1,1 ! do only itz=1
   !!$omp paralleldo default(shared) private(ity,itx)
@@ -252,13 +252,13 @@ subroutine buffer_xvp(dox,dov)
   do itx=1,nnt
     if (dox) &
     xp(:,idx_b_l(1-ncb,1-ncb,itx,ity,itz)+1:idx_b_r(nt+ncb,0,itx,ity,itz))=&
-    xp(:,ml(itx,ity)+1:mr(itx,ity))[image1d(icx,icy,inz)]
+    xp(:,ml(itx,ity)+1:mr(itx,ity))[icx,icy,inz]
     if (dov) then
       vp(:,idx_b_l(1-ncb,1-ncb,itx,ity,itz)+1:idx_b_r(nt+ncb,0,itx,ity,itz))=&
-      vp(:,ml(itx,ity)+1:mr(itx,ity))[image1d(icx,icy,inz)]
+      vp(:,ml(itx,ity)+1:mr(itx,ity))[icx,icy,inz]
 #ifdef PID
       pid(idx_b_l(1-ncb,1-ncb,itx,ity,itz)+1:idx_b_r(nt+ncb,0,itx,ity,itz))=&
-      pid(ml(itx,ity)+1:mr(itx,ity))[image1d(icx,icy,inz)]
+      pid(ml(itx,ity)+1:mr(itx,ity))[icx,icy,inz]
 #endif
     endif
   enddo
@@ -290,8 +290,8 @@ subroutine buffer_xvp(dox,dov)
   sync all
 
   ! sync z+
-  ml=idx_b_l(1-ncb,1,:,:,1)[image1d(icx,icy,ipz)]
-  mr=idx_b_r(nt+ncb,ncb,:,:,1)[image1d(icx,icy,ipz)]
+  ml=idx_b_l(1-ncb,1,:,:,1)[icx,icy,ipz]
+  mr=idx_b_r(nt+ncb,ncb,:,:,1)[icx,icy,ipz]
   sync all
   do itz=nnt,nnt ! do only itz=nnt
   !!$omp paralleldo default(shared) private(ity,itx)
@@ -299,13 +299,13 @@ subroutine buffer_xvp(dox,dov)
   do itx=1,nnt
     if (dox) &
     xp(:,idx_b_l(1-ncb,nt+1,itx,ity,itz)+1:idx_b_r(nt+ncb,nt+ncb,itx,ity,itz))=&
-    xp(:,ml(itx,ity)+1:mr(itx,ity))[image1d(icx,icy,ipz)]
+    xp(:,ml(itx,ity)+1:mr(itx,ity))[icx,icy,ipz]
     if (dov) then
       vp(:,idx_b_l(1-ncb,nt+1,itx,ity,itz)+1:idx_b_r(nt+ncb,nt+ncb,itx,ity,itz))=&
-      vp(:,ml(itx,ity)+1:mr(itx,ity))[image1d(icx,icy,ipz)]
+      vp(:,ml(itx,ity)+1:mr(itx,ity))[icx,icy,ipz]
 #ifdef PID
       pid(idx_b_l(1-ncb,nt+1,itx,ity,itz)+1:idx_b_r(nt+ncb,nt+ncb,itx,ity,itz))=&
-      pid(ml(itx,ity)+1:mr(itx,ity))[image1d(icx,icy,ipz)]
+      pid(ml(itx,ity)+1:mr(itx,ity))[icx,icy,ipz]
 #endif
     endif
   enddo

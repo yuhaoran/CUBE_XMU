@@ -20,7 +20,7 @@ program cicpower
 
   !real(4) rho_grid(0:ng+1,0:ng+1,0:ng+1)[*]
   !real(4) rho_c(ng,ng,ng),rho_nu(ng,ng,ng)
-  real,allocatable :: rho_grid(:,:,:)[:],rho_c(:,:,:),rho_nu(:,:,:)
+  real,allocatable :: rho_grid(:,:,:)[:,:,:],rho_c(:,:,:),rho_nu(:,:,:)
   real(4) mass_p,pos1(3),dx1(3),dx2(3)
   real(8) rho8[*]
 
@@ -39,7 +39,7 @@ program cicpower
   endif
   sync all
 
-  allocate(rho_grid(0:ng+1,0:ng+1,0:ng+1)[*])
+  allocate(rho_grid(0:ng+1,0:ng+1,0:ng+1)[nn,nn,*])
   allocate(rho_c(ng,ng,ng),rho_nu(ng,ng,ng))
   allocate(rhoc(nt,nt,nt,nnt,nnt,nnt))
 
@@ -147,12 +147,12 @@ program cicpower
     deallocate(xp)
     if (head) print*, 'Start sync from buffer regions'
     sync all
-    rho_grid(1,:,:)=rho_grid(1,:,:)+rho_grid(ng+1,:,:)[image1d(inx,icy,icz)]
-    rho_grid(ng,:,:)=rho_grid(ng,:,:)+rho_grid(0,:,:)[image1d(ipx,icy,icz)]; sync all
-    rho_grid(:,1,:)=rho_grid(:,1,:)+rho_grid(:,ng+1,:)[image1d(icx,iny,icz)]
-    rho_grid(:,ng,:)=rho_grid(:,ng,:)+rho_grid(:,0,:)[image1d(icx,ipy,icz)]; sync all
-    rho_grid(:,:,1)=rho_grid(:,:,1)+rho_grid(:,:,ng+1)[image1d(icx,icy,inz)]
-    rho_grid(:,:,ng)=rho_grid(:,:,ng)+rho_grid(:,:,0)[image1d(icx,icy,ipz)]; sync all
+    rho_grid(1,:,:)=rho_grid(1,:,:)+rho_grid(ng+1,:,:)[inx,icy,icz]
+    rho_grid(ng,:,:)=rho_grid(ng,:,:)+rho_grid(0,:,:)[ipx,icy,icz]; sync all
+    rho_grid(:,1,:)=rho_grid(:,1,:)+rho_grid(:,ng+1,:)[icx,iny,icz]
+    rho_grid(:,ng,:)=rho_grid(:,ng,:)+rho_grid(:,0,:)[icx,ipy,icz]; sync all
+    rho_grid(:,:,1)=rho_grid(:,:,1)+rho_grid(:,:,ng+1)[icx,icy,inz]
+    rho_grid(:,:,ng)=rho_grid(:,:,ng)+rho_grid(:,:,0)[icx,icy,ipz]; sync all
     !rho_c=rho_grid(1:ng,1:ng,1:ng)
     do i=1,ng
     do j=1,ng

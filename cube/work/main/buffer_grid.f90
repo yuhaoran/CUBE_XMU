@@ -19,7 +19,7 @@ subroutine buffer_np(rhoc)
   implicit none
   save
 
-  integer(4) rhoc(1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)[*]
+  integer(4) rhoc(1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)[nn,nn,*]
   integer(8),parameter :: unit8=1
   integer(8) itest
   if (head) then
@@ -28,25 +28,25 @@ subroutine buffer_np(rhoc)
 
   !x
   !!$omp workshare
-  rhoc(:0,:,:,1,:,:)=rhoc(nt-ncb+1:nt,:,:,nnt,:,:)[image1d(inx,icy,icz)]
+  rhoc(:0,:,:,1,:,:)=rhoc(nt-ncb+1:nt,:,:,nnt,:,:)[inx,icy,icz]
   rhoc(:0,:,:,2:,:,:)=rhoc(nt-ncb+1:nt,:,:,:nnt-1,:,:)
-  rhoc(nt+1:,:,:,nnt,:,:)=rhoc(1:ncb,:,:,1,:,:)[image1d(ipx,icy,icz)]
+  rhoc(nt+1:,:,:,nnt,:,:)=rhoc(1:ncb,:,:,1,:,:)[ipx,icy,icz]
   rhoc(nt+1:,:,:,:nnt-1,:,:)=rhoc(1:ncb,:,:,2:,:,:)
   !!$omp endworkshare
   sync all
   !y
   !!$omp workshare
-  rhoc(:,:0,:,:,1,:)=rhoc(:,nt-ncb+1:nt,:,:,nnt,:)[image1d(icx,iny,icz)]
+  rhoc(:,:0,:,:,1,:)=rhoc(:,nt-ncb+1:nt,:,:,nnt,:)[icx,iny,icz]
   rhoc(:,:0,:,:,2:,:)=rhoc(:,nt-ncb+1:nt,:,:,1:nnt-1,:)
-  rhoc(:,nt+1:,:,:,nnt,:)=rhoc(:,1:ncb,:,:,1,:)[image1d(icx,ipy,icz)]
+  rhoc(:,nt+1:,:,:,nnt,:)=rhoc(:,1:ncb,:,:,1,:)[icx,ipy,icz]
   rhoc(:,nt+1:,:,:,:nnt-1,:)=rhoc(:,1:ncb,:,1:,2:,:)
   !!$omp endworkshare
   sync all
   !z
   !!$omp workshare
-  rhoc(:,:,:0,:,:,1)=rhoc(:,:,nt-ncb+1:nt,:,:,nnt)[image1d(icx,icy,inz)]
+  rhoc(:,:,:0,:,:,1)=rhoc(:,:,nt-ncb+1:nt,:,:,nnt)[icx,icy,inz]
   rhoc(:,:,:0,:,:,2:)=rhoc(:,:,nt-ncb+1:nt,:,:,:nnt-1)
-  rhoc(:,:,nt+1:,:,:,nnt)=rhoc(:,:,1:ncb,:,:,1)[image1d(icx,icy,ipz)]
+  rhoc(:,:,nt+1:,:,:,nnt)=rhoc(:,:,1:ncb,:,:,1)[icx,icy,ipz]
   rhoc(:,:,nt+1:,:,:,:nnt-1)=rhoc(:,:,1:ncb,:,:,2:)
   !!$omp endworkshare
   sync all
@@ -57,49 +57,46 @@ subroutine buffer_vc(vfield1)
   implicit none
   save
 
-  real(4) vfield1(3,1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)
+  real(4) vfield1(3,1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)[nn,nn,*]
   ! the following variables are introduced because
   ! gcc only allows <= 7 ranks in arrays
   if (head) print*, 'buffer_vc'
   !x
-  vtransx=vfield1(:,nt-ncb+1:nt,:,:,nnt,:,:)
-  sync all
-  vfield1(:,:0,:,:,1,:,:)=vtransx(:,:,:,:,:,:)[image1d(inx,icy,icz)]
-  sync all
+  !vtransx=vfield1(:,nt-ncb+1:nt,:,:,nnt,:,:)
+  !sync all
+  vfield1(:,:0,:,:,1,:,:)=vfield1(:,nt-ncb+1:nt,:,:,nnt,:,:)[inx,icy,icz]
   vfield1(:,:0,:,:,2:,:,:)=vfield1(:,nt-ncb+1:nt,:,:,:nnt-1,:,:)
+  sync all
 
-  vtransx=vfield1(:,1:ncb,:,:,1,:,:)
-  sync all
-  vfield1(:,nt+1:,:,:,nnt,:,:)=vtransx(:,:,:,:,:,:)[image1d(ipx,icy,icz)]
-  sync all
+  !vtransx=vfield1(:,1:ncb,:,:,1,:,:)
+  !sync all
+  vfield1(:,nt+1:,:,:,nnt,:,:)=vfield1(:,1:ncb,:,:,1,:,:)[ipx,icy,icz]
   vfield1(:,nt+1:,:,:,:nnt-1,:,:)=vfield1(:,1:ncb,:,:,2:,:,:)
   sync all
 
   !y
-  vtransy=vfield1(:,:,nt-ncb+1:nt,:,:,nnt,:)
-  sync all
-  vfield1(:,:,:0,:,:,1,:)=vtransy(:,:,:,:,:,:)[image1d(icx,iny,icz)]
-  sync all
+  !vtransy=vfield1(:,:,nt-ncb+1:nt,:,:,nnt,:)
+  !sync all
+  vfield1(:,:,:0,:,:,1,:)=vfield1(:,:,nt-ncb+1:nt,:,:,nnt,:)[icx,iny,icz]
   vfield1(:,:,:0,:,:,2:,:)=vfield1(:,:,nt-ncb+1:nt,:,:,1:nnt-1,:)
+  sync all
 
-  vtransy=vfield1(:,:,1:ncb,:,:,1,:)
-  sync all
-  vfield1(:,:,nt+1:,:,:,nnt,:)=vtransy(:,:,:,:,:,:)[image1d(icx,ipy,icz)]
-  sync all
+  !vtransy=vfield1(:,:,1:ncb,:,:,1,:)
+  !sync all
+  vfield1(:,:,nt+1:,:,:,nnt,:)=vfield1(:,:,1:ncb,:,:,1,:)[icx,ipy,icz]
   vfield1(:,:,nt+1:,:,:,:nnt-1,:)=vfield1(:,:,1:ncb,:,1:,2:,:)
   sync all
 
   !z
-  vtransz=vfield1(:,:,:,nt-ncb+1:nt,:,:,nnt)
-  sync all
-  vfield1(:,:,:,:0,:,:,1)=vtransz(:,:,:,:,:,:)[image1d(icx,icy,inz)]
-  sync all
+  !vtransz=vfield1(:,:,:,nt-ncb+1:nt,:,:,nnt)
+  !sync all
+  vfield1(:,:,:,:0,:,:,1)=vfield1(:,:,:,nt-ncb+1:nt,:,:,nnt)[icx,icy,inz]
   vfield1(:,:,:,:0,:,:,2:)=vfield1(:,:,:,nt-ncb+1:nt,:,:,:nnt-1)
+  sync all
 
-  vtransz=vfield1(:,:,:,1:ncb,:,:,1)
-  sync all
-  vfield1(:,:,:,nt+1:,:,:,nnt)=vtransz(:,:,:,:,:,:)[image1d(icx,icy,ipz)]
-  sync all
+  !vtransz=vfield1(:,:,:,1:ncb,:,:,1)
+  !sync all
+  vfield1(:,:,:,nt+1:,:,:,nnt)=vfield1(:,:,:,1:ncb,:,:,1)[icx,icy,ipz]
   vfield1(:,:,:,nt+1:,:,:,:nnt-1)=vfield1(:,:,:,1:ncb,:,:,2:)
   sync all
 endsubroutine

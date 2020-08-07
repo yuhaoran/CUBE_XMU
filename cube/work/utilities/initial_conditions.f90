@@ -25,7 +25,7 @@ program initial_conditions
 
   integer(8) i,j,k,ip,l,nzero
   integer(8) ind,dx,dxy,kg,mg,jg,ig,ii,jj,kk,itx,ity,itz,idx,imove,g(3),iq(3)
-  integer(4) seedsize,t1,t2,tt1,tt2,ttt1,ttt2,t_rate,ilayer,nlayer
+  integer(4) seedsize,t1,t2,tt1,tt2,ttt1,ttt2,t_rate,ilayer,nlayer,istat,icore
   real a_i,kr,kx,ky,kz,kmax,temp_r,temp_theta,pow,phi8,temp8[*]
   real(8) v8,norm_As,xq(3),gradphi(3),vreal(3),dvar[*],dvarg
   integer(int64) time64
@@ -34,7 +34,7 @@ program initial_conditions
   real,allocatable :: rseed_all(:,:)
 
   complex,allocatable :: delta_k(:,:,:)
-  real,allocatable :: phi(:,:,:)[:]
+  real,allocatable :: phi(:,:,:)[:,:,:]
 
   !! zip format arrays
   integer(8),parameter :: npt=nt*np_nc ! np (number of particle) / tile / dimension (dim)
@@ -50,7 +50,7 @@ program initial_conditions
   integer(izipv),allocatable :: vp(:,:)
 #ifdef PID
     !integer(4) pid(npmax) ! particle ID (tag), if np>2^31, use integer(8) for pid
-    integer(4),allocatable :: pid(:)
+    integer(8),allocatable :: pid(:)
 #endif
   real grad_max(3)[*],vmax(3),vf ! max of gradient of phi; max velocity; velocity factor
   real(4) svz(500,2),svr(100,2) ! for velocity conversion between integers and reals
@@ -90,7 +90,7 @@ program initial_conditions
     call system('cp ../main/z_*.txt '//opath//'code/')
   endif
 
-  allocate(phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[*])
+  allocate(phi(-nfb:nf+nfb+1,-nfb:nf+nfb+1,-nfb:nf+nfb+1)[nn,nn,*])
   allocate(vfield(3,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
   allocate(rhoce(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
   allocate(rholocal(1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb,1-2*ncb:nt+2*ncb))
@@ -143,6 +143,15 @@ program initial_conditions
 
   if (head) print*,''
   if (head) print*,'Creating FFT plans'
+#ifndef macbook
+    istat=0
+    call sfftw_init_threads(istat)
+    if(head) print*, 'sfftw_init_threads status',istat
+    icore=omp_get_max_threads()
+    if(head) print*, 'omp_get_max_threads() =',icore
+    call sfftw_plan_with_nthreads(icore)
+    !call sfftw_plan_with_nthreads(32)
+#endif
   call system_clock(t1,t_rate)
   call create_penfft_plan
   call system_clock(t2,t_rate)
@@ -422,17 +431,17 @@ program initial_conditions
 
   ! buffer phi ---------------------------------------------------
   if (head) print*, '  buffer phi'
-  phi(:0,:,:)=phi(nf-nfb:nf,:,:)[image1d(inx,icy,icz)]
+  phi(:0,:,:)=phi(nf-nfb:nf,:,:)[inx,icy,icz]
   sync all
-  phi(nf+1:,:,:)=phi(1:nfb+1,:,:)[image1d(ipx,icy,icz)]
+  phi(nf+1:,:,:)=phi(1:nfb+1,:,:)[ipx,icy,icz]
   sync all
-  phi(:,:0,:)=phi(:,nf-nfb:nf,:)[image1d(icx,iny,icz)]
+  phi(:,:0,:)=phi(:,nf-nfb:nf,:)[icx,iny,icz]
   sync all
-  phi(:,nf+1:,:)=phi(:,1:nfb+1,:)[image1d(icx,ipy,icz)]
+  phi(:,nf+1:,:)=phi(:,1:nfb+1,:)[icx,ipy,icz]
   sync all
-  phi(:,:,:0)=phi(:,:,nf-nfb:nf)[image1d(icx,icy,inz)]
+  phi(:,:,:0)=phi(:,:,nf-nfb:nf)[icx,icy,inz]
   sync all
-  phi(:,:,nf+1:)=phi(:,:,1:nfb+1)[image1d(icx,icy,ipz)]
+  phi(:,:,nf+1:)=phi(:,:,1:nfb+1)[icx,icy,ipz]
   sync all
 
 

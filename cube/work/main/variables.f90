@@ -41,10 +41,10 @@ module variables
   real(8) std_vsim_c[*],std_vsim_res[*],std_vsim[*]
   real(8) std_vsim_c_nu[*],std_vsim_res_nu[*],std_vsim_nu[*]
   ! n^3
-  integer(izipx) xp(3,np_image_max)[*], xp_new(3,np_tile_max)
-  integer(izipv) vp(3,np_image_max)[*], vp_new(3,np_tile_max)
+  integer(izipx) xp(3,np_image_max)[nn,nn,*], xp_new(3,np_tile_max)
+  integer(izipv) vp(3,np_image_max)[nn,nn,*], vp_new(3,np_tile_max)
 #ifdef PID
-    integer(4) pid(np_image_max)[*], pid_new(np_tile_max)
+    integer(8) pid(np_image_max)[nn,nn,*], pid_new(np_tile_max)
 #endif
 #ifdef AFIELD
     real(4) afield(3,np_image_max)
@@ -55,11 +55,11 @@ module variables
   real kern_f(nfe/2+1,nfe,nfe,3)
   real force_f(3,nfb:nfe-nfb+1,nfb:nfe-nfb+1,nfb:nfe-nfb+1)
 
-  integer(4) rhoc(1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)[*]
-  real(4) vfield(3,1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt) ! cannot have >7 dims
+  integer(4) rhoc(1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)[nn,nn,*]
+  real(4) vfield(3,1-ncb:nt+ncb,1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt)[nn,nn,*] ! cannot have >7 dims
 
-  integer(8),dimension(1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt),codimension[*] :: idx_b_l,idx_b_r
-  integer(8),dimension(nt,nt,nnt,nnt,nnt),codimension[*] :: ppl0,pplr,pprl,ppr0,ppl,ppr
+  integer(8),dimension(1-ncb:nt+ncb,1-ncb:nt+ncb,nnt,nnt,nnt),codimension[nn,nn,*] :: idx_b_l,idx_b_r
+  integer(8),dimension(nt,nt,nnt,nnt,nnt),codimension[nn,nn,*] :: ppl0,pplr,pprl,ppr0,ppl,ppr
 
   ! the following variables are introduced because
   ! gcc only allows <= 7 ranks in arrays
@@ -71,7 +71,7 @@ module variables
   real ck(3,nc,nc,nc)
   real kern_c(nc*nn/2+1,nc,npen,3)
   real crho_c(nc*nn+2,nc,npen) !!! temp
-  real force_c(3,0:nc+1,0:nc+1,0:nc+1)[*]
+  real force_c(3,0:nc+1,0:nc+1,0:nc+1)[nn,nn,*]
 
   character (10) :: img_s, z_s
 

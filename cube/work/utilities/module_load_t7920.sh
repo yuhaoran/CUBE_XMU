@@ -1,6 +1,8 @@
 export FC='ifort'
+export XFLAG_NO_OMP='-O3 -fpp -qopenmp -coarray=distributed -mcmodel=medium'
 export XFLAG='-O3 -fpp -qopenmp -coarray=distributed -mcmodel=medium'
-export OFLAG=${XFLAG}' -c'
+export OFLAG_NO_OMP=$XFLAG_NO_OMP' -c'
+export OFLAG=$XFLAG' -c'
 export FFTFLAG='-I/opt/intel/mkl/include/fftw/ -mkl'
 
 export OMP_STACKSIZE=16000M

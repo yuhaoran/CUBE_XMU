@@ -8,7 +8,7 @@ OPTIONS+=-DPID
 #OPTIONS+=-Dpositive
 #OPTIONS+=-DEmode -DdspE
 
-all: ic.x cicpower.x # spin_mode.x djdm.x cicrsd.x cicrsd1.x halofinder.x dsp.x lpt.x lpt1.x spinfield.x ang_mom_corr.x #vel.x qspace.x corr.x #convert.x
+all: ic.x cicpower.x fof.x # spin_mode.x djdm.x cicrsd.x cicrsd1.x halofinder.x dsp.x lpt.x lpt1.x spinfield.x ang_mom_corr.x #vel.x qspace.x corr.x #convert.x
 	@echo "done"
 
 ic.x:    parameters.o variables.o pencil_fft.o initial_conditions.o powerspectrum.o
@@ -16,7 +16,7 @@ ic.x:    parameters.o variables.o pencil_fft.o initial_conditions.o powerspectru
 ic_nu.x: parameters.o variables.o pencil_fft.o initial_conditions_nu.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@ $(FFTFLAG)
 
-lpt.x: parameters.o variables.o pencil_fft.o lpt.o halofind.o powerspectrum.o indexedsort.o
+lpt.x: parameters.o variables.o pencil_fft.o lpt.o halofind_FoF.o powerspectrum.o indexedsort.o
 	$(FC) $(XFLAG_NO_OMP) $(OPTIONS) $^ -o $@ $(FFTFLAG)
 fof.x: parameters.o CUBE_fof_halofinder.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
@@ -36,7 +36,7 @@ cicrsd.x: parameters.o cicrsd.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
 cicrsd1.x: parameters.o cicrsd1.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
-halofinder.x: parameters.o variables.o halofind.o indexedsort.o buffer_grid.o buffer_particle.o particle_initialization.o halofinder.o
+halofinder.x: parameters.o variables.o halofind_FoF.o indexedsort.o buffer_grid.o buffer_particle.o particle_initialization.o halofinder.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
 ang_mom_corr.x: parameters.o variables.o ang_mom_corr.o indexedsort.o
 	$(FC) $(XFLAG) $(OPTIONS) $^ -o $@
@@ -95,9 +95,9 @@ cicrsd1.o: cicrsd1.f90 parameters.o
 	$(FC) $(OFLAG) $(OPTIONS) $<
 ang_mom_corr.o: ang_mom_corr.f90 parameters.o indexedsort.o
 	$(FC) $(OFLAG) $(OPTIONS) $< $(FFTFLAG)
-halofinder.o: halofinder.f90 parameters.o variables.o neutrinos.o halofind.o buffer_grid.o buffer_particle.o particle_initialization.o
+halofinder.o: halofinder.f90 parameters.o variables.o neutrinos.o halofind_FoF.o buffer_grid.o buffer_particle.o particle_initialization.o
 	$(FC) $(OFLAG) $(OPTIONS) $<
-halofind.o: ../main/halofind.f90 variables.o neutrinos.o indexedsort.o
+halofind_FoF.o: ../main/halofind_FoF.f90 variables.o neutrinos.o indexedsort.o
 	$(FC) $(OFLAG) $(OPTIONS) $<
 indexedsort.o: ../main/indexedsort.f90
 	$(FC) $(OFLAG) $(OPTIONS) $<

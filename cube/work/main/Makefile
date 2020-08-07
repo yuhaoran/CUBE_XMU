@@ -19,7 +19,7 @@ main.x: $(OBJFILE)
 	$(FC) $(XFLAG) $(OPTIONS) $(OBJFILE) -o $@ $(FFTFLAG)
 
 ## For addtional subroutines, add its dependency on variables.o, and dependency of main.o on it.
-
+parameters.o: Makefile basic_functions.f08
 variables.o: parameters.o
 neutrinos.o: parameters.o
 pencil_fft.o: parameters.o

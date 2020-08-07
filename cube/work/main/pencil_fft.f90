@@ -1,4 +1,3 @@
-! to be optimized - image1d, ctransfer more than one slab
 module pencil_fft
   use parameters
   implicit none
@@ -15,15 +14,6 @@ module pencil_fft
   complex     cyyyxz(npen,nn,nn,ng/2+1,npen)
   complex     cyyxz(ng,     nn,ng/2+1,npen)
   complex     czzzxy(npen,nn,nn,ng/2+1,npen)
-
-  ! communication coarrays
-  complex,allocatable :: ctransfer1(:,:,:)[:],ctransfer2(:,:,:)[:],ctransfer3(:,:,:,:)[:],ctransfer4(:,:,:)[:]
-  !complex ctransfer1(ng/2,ng,nn)[*]
-  !complex ctransfer2(ng,ng/2+1,nn)[*]
-  !complex ctransfer3(npen,npen,nn,nn)[*]
-  !complex ctransfer4(ng/2+1,ng,nn)[*]
-
-  ! equivalence statements
   equivalence(cyyyxz,cyyxz,r3,c3)
   equivalence(czzzxy,rxyz,cxyz)
 
@@ -64,115 +54,121 @@ module pencil_fft
     implicit none
     save
     integer(8) i0,i1,i2,islab
-    allocate(ctransfer1(ng/2,ng,nn)[*])
+    complex,allocatable :: ctransfer(:,:,:)[:,:,:]
+    allocate(ctransfer(ng/2,ng,nn)[nn,nn,*])
     do islab=1,npen ! loop over cells in z, extract slabs
-      ctransfer1(:,:,1:nn)=c3(:,:,islab::npen) ! nn slabs of c3 copied to ctransfer1
+      ctransfer(:,:,1:nn)=c3(:,:,islab::npen) ! nn slabs of c3 copied to ctransfer1
       sync all
       do i1=1,nn ! loop over parts in x, get slabs from each y node
         ! i1=mod()
-        cxyz(ng*(i1-1)/2+1:ng*i1/2,:,islab)=ctransfer1(:,:,m2)[image1d(i1,m1,m3)]
+        cxyz(ng*(i1-1)/2+1:ng*i1/2,:,islab)=ctransfer(:,:,m2)[i1,m1,m3]
       enddo
       sync all
     enddo
-    deallocate(ctransfer1)
+    deallocate(ctransfer)
   endsubroutine
 
   subroutine x2y
     implicit none
     save
     integer(8) i0,i1,i2,islab
-    allocate(ctransfer2(ng,ng/2+1,nn)[*])
+    complex,allocatable :: ctransfer(:,:,:)[:,:,:]
+    allocate(ctransfer(ng,ng/2+1,nn)[nn,nn,*])
     do islab=1,npen ! loop over z
       do i1=1,nn ! loop over squares in x direction
-        ctransfer2(:,:,i1)=transpose(cxyz(ng/2*(i1-1)+1:ng/2*i1+1,:,islab))
+        ctransfer(:,:,i1)=transpose(cxyz(ng/2*(i1-1)+1:ng/2*i1+1,:,islab))
       enddo
       sync all
       do i1=1,nn
-        cyyxz(:,i1,:,islab)=ctransfer2(:,:,m1)[image1d(i1,m2,m3)]
+        cyyxz(:,i1,:,islab)=ctransfer(:,:,m1)[i1,m2,m3]
       enddo
       sync all
     enddo
-    deallocate(ctransfer2)
+    deallocate(ctransfer)
   endsubroutine
 
   subroutine y2z
     implicit none
     save
     integer(8) i0,i1,i2,islab
-    allocate(ctransfer3(npen,npen,nn,nn)[*])
+    complex,allocatable :: ctransfer(:,:,:,:)[:,:,:]
+    allocate(ctransfer(npen,npen,nn,nn)[nn,nn,*])
     do islab=1,ng/2+1 ! loop over slices in x direction
       do i2=1,nn
       do i1=1,nn
-        ctransfer3(:,:,i1,i2)=transpose(cyyyxz(:,i1,i2,islab,:))
+        ctransfer(:,:,i1,i2)=transpose(cyyyxz(:,i1,i2,islab,:))
       enddo
       enddo
       sync all
       do i2=1,nn
       do i1=1,nn
-        czzzxy(:,i1,i2,islab,:)=ctransfer3(:,:,m2,m3)[image1d(m1,i1,i2)]
+        czzzxy(:,i1,i2,islab,:)=ctransfer(:,:,m2,m3)[m1,i1,i2]
       enddo
       enddo
       sync all
     enddo
-    deallocate(ctransfer3)
+    deallocate(ctransfer)
   endsubroutine
 
   subroutine z2y
     implicit none
     save
     integer(8) i0,i1,i2,islab
-    allocate(ctransfer3(npen,npen,nn,nn)[*])
+    complex,allocatable :: ctransfer(:,:,:,:)[:,:,:]
+    allocate(ctransfer(npen,npen,nn,nn)[nn,nn,*])
     do islab=1,ng/2+1 ! loop over slices in x direction
       do i2=1,nn
       do i1=1,nn
-        ctransfer3(:,:,i1,i2)=transpose(czzzxy(:,i1,i2,islab,:))
+        ctransfer(:,:,i1,i2)=transpose(czzzxy(:,i1,i2,islab,:))
       enddo
       enddo
       sync all
       do i2=1,nn
       do i1=1,nn
-        cyyyxz(:,i1,i2,islab,:)=ctransfer3(:,:,m2,m3)[image1d(m1,i1,i2)]
+        cyyyxz(:,i1,i2,islab,:)=ctransfer(:,:,m2,m3)[m1,i1,i2]
       enddo
       enddo
       sync all
     enddo
-    deallocate(ctransfer3)
+    deallocate(ctransfer)
   endsubroutine
 
   subroutine y2x
     implicit none
     save
     integer(8) i0,i1,i2,islab
-    allocate(ctransfer4(ng/2+1,ng,nn)[*])
+    complex,allocatable :: ctransfer(:,:,:)[:,:,:]
+    allocate(ctransfer(ng/2+1,ng,nn)[nn,nn,*])
     do islab=1,npen ! loop over z
       do i1=1,nn ! loop over squares in x direction
-        ctransfer4(:,:,i1)=transpose(cyyxz(:,i1,:,islab))
+        ctransfer(:,:,i1)=transpose(cyyxz(:,i1,:,islab))
       enddo
       sync all
       do i1=1,nn
-        cxyz(ng/2*(i1-1)+1:ng/2*i1+1,:,islab)=ctransfer4(:,:,m1)[image1d(i1,m2,m3)]
+        cxyz(ng/2*(i1-1)+1:ng/2*i1+1,:,islab)=ctransfer(:,:,m1)[i1,m2,m3]
       enddo
       sync all
     enddo
-    deallocate(ctransfer4)
+    deallocate(ctransfer)
   endsubroutine
 
   subroutine x2c
     implicit none
     save
     integer(8) i0,i1,i2,islab
-    allocate(ctransfer1(ng/2,ng,nn)[*])
+    complex,allocatable :: ctransfer(:,:,:)[:,:,:]
+    allocate(ctransfer(ng/2,ng,nn)[nn,nn,*])
     do islab=1,npen
       do i1=1,nn
-        ctransfer1(:,:,i1)=cxyz(ng*(i1-1)/2+1:ng*i1/2,:,islab)
+        ctransfer(:,:,i1)=cxyz(ng*(i1-1)/2+1:ng*i1/2,:,islab)
       enddo
       sync all
       do i1=1,nn
-        c3(:,:,islab+(i1-1)*npen)=ctransfer1(:,:,m1)[image1d(m2,i1,m3)]
+        c3(:,:,islab+(i1-1)*npen)=ctransfer(:,:,m1)[m2,i1,m3]
       enddo
       sync all
     enddo
-    deallocate(ctransfer1)
+    deallocate(ctransfer)
   endsubroutine
 
   subroutine create_penfft_plan

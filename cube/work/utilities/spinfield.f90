@@ -42,7 +42,7 @@ program helicityfield
   enddo
   71 n_checkpoint=ii-1
   close(16)
-  cur_checkpoint=1 ! read halos first
+  sim%cur_checkpoint=1 ! read halos first
 
   print*,'call create_cubefft_plan'
   call create_cubefft_plan

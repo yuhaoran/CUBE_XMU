@@ -229,14 +229,14 @@ integer(4) t01,t02,t0rate
   ! sync force_c buffer for CIC force
   if (head) print*, '      sync force_c buffer'
   call system_clock(t1,t_rate)
-  force_c(:,0,:,:)=force_c(:,nc,:,:)[image1d(inx,icy,icz)]
-  force_c(:,nc+1,:,:)=force_c(:,1,:,:)[image1d(ipx,icy,icz)]
+  force_c(:,0,:,:)=force_c(:,nc,:,:)[inx,icy,icz]
+  force_c(:,nc+1,:,:)=force_c(:,1,:,:)[ipx,icy,icz]
   sync all
-  force_c(:,:,0,:)=force_c(:,:,nc,:)[image1d(icx,iny,icz)]
-  force_c(:,:,nc+1,:)=force_c(:,:,1,:)[image1d(icx,ipy,icz)]
+  force_c(:,:,0,:)=force_c(:,:,nc,:)[icx,iny,icz]
+  force_c(:,:,nc+1,:)=force_c(:,:,1,:)[icx,ipy,icz]
   sync all
-  force_c(:,:,:,0)=force_c(:,:,:,nc)[image1d(icx,icy,inz)]
-  force_c(:,:,:,nc+1)=force_c(:,:,:,1)[image1d(icx,icy,ipz)]
+  force_c(:,:,:,0)=force_c(:,:,:,nc)[icx,icy,inz]
+  force_c(:,:,:,nc+1)=force_c(:,:,:,1)[icx,icy,ipz]
   sync all
   ! coarse_max_dt
   f2_max_coarse=maxval(sum(force_c**2,1))

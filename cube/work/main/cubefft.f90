@@ -1,4 +1,4 @@
-#define macbook
+!#define macbook
 !  if defined macbook, then omp-fftw is disabled.
 module cubefft
   contains

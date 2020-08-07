@@ -26,7 +26,7 @@ module parameters
   integer(8),parameter :: n_nest=1 ! number of nested threads
   integer(8),parameter :: ncell=4 ! number of nf in each nc, /dim
   integer(8),parameter :: nnt=2 ! number of tiles /image/dim
-  integer(8),parameter :: nc=64 ! nc/image/dim, in physical volume, >=24
+  integer(8),parameter :: nc=128 ! nc/image/dim, in physical volume, >=24
   integer(8),parameter :: nt=nc/nnt ! nc/tile/dim, in physical volume, >=12
 
   integer(8),parameter :: nf=nc*ncell ! >=96
@@ -186,7 +186,7 @@ module parameters
       print*,'| izip x,v        =',int(s%izipx,1),int(s%izipv,1)
       print*,'| izip x,v(nu)    =',int(s%izipx_nu,1),int(s%izipv_nu,1)
       print*,'| '
-      print*,'| h_0             =',s%h0,'km/s/Mpc'
+      print*,'| h_0             =',s%h0,'*100 km/s/Mpc'
       print*,'| omega_m         =',s%omega_m
       print*,'| omega_l         =',s%omega_l
       print*,'| sigma_8         =',s%s8
@@ -202,5 +202,5 @@ module parameters
       sync all
     endsubroutine
 
-    include 'basic_functions.fh'
+    include 'basic_functions.f08'
 endmodule
