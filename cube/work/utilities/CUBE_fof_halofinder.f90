@@ -10,8 +10,9 @@ module halo_output
     real,dimension(3,3) :: tide,xx,qq,vv,uu ! 2nd order stat ! 26:70
     real lambda_qq(3),vec_qq(3,3) ! eigenvalue/vector of qq ! 71:82
     real lambda_tide(3),vec_tide(3,3) ! eigenvalue/vector of tide ! 83:94
-    real spin_ratio_e,spin_ratio_l ! kinematic spin parameter 95:96
-    real lam_e,lam_l ! 97:98 ! Bullock spin parameter
+    real spin_ratio_e,lambda_K ! kinematic spin parameter in Eulerian, Lagrangian 95:96
+    real lambda_B ! Bullock spin parameter ! 97
+    real beta ! |spin_T|/(I_ij T_ij)
   endtype
 endmodule
 
@@ -426,20 +427,17 @@ program CUBE_FoF
         sj(3)=dx(1,ip)*dv(2,ip)-dx(2,ip)*dv(1,ip)
         mu_xvj(ip)=sum(sj*hcat(ihalo)%je)/norm2(sj)/norm2(hcat(ihalo)%je) * sqrt(abs(1-mu_xv**2))
       enddo
-      hcat(ihalo)%spin_ratio_l=sum(sqrt(sum(dq(:,:np)**2,1)) * sqrt(sum(du(:,:np)**2,1)) * mu_quj(:np)) &
+      hcat(ihalo)%lambda_K=sum(sqrt(sum(dq(:,:np)**2,1)) * sqrt(sum(du(:,:np)**2,1)) * mu_quj(:np)) &
         / sum(sqrt(sum(dq(:,:np)**2,1)) * sqrt(sum(du(:,:np)**2,1)))
       hcat(ihalo)%spin_ratio_e=sum(sqrt(sum(dx(:,:np)**2,1)) * sqrt(sum(dv(:,:np)**2,1)) * mu_xvj(:np)) &
         / sum(sqrt(sum(dx(:,:np)**2,1)) * sqrt(sum(dv(:,:np)**2,1)))
-      hcat(ihalo)%lam_l = norm2(hcat(ihalo)%jl) * hcat(ihalo)%hmass**(-5./3.)
-
+      
       r_equiv=(hcat(ihalo)%hmass * grid_per_p * 3/800/pi)**(1./3.) * lsim2pc
-      hcat(ihalo)%lam_e = norm2(hcat(ihalo)%je)/hcat(ihalo)%hmass * (sim%vsim2phys*lsim2pc*nf_global)
-      hcat(ihalo)%lam_e = hcat(ihalo)%lam_e / sqrt(2*G_phys*hcat(ihalo)%hmass*msim2phys* r_equiv)
+      hcat(ihalo)%lambda_B = (norm2(hcat(ihalo)%je)/hcat(ihalo)%hmass * (sim%vsim2phys*lsim2pc*nf_global)) &
+        / sqrt(2*G_phys*hcat(ihalo)%hmass*msim2phys* r_equiv)
 
       r_equiv=(hcat(ihalo)%hmass * grid_per_p * 3/4/pi)**(1./3.) * lsim2pc
-      !hcat(ihalo)%lam_l = norm2(hcat(ihalo)%jl)/hcat(ihalo)%hmass * (sim%vsim2phys*lsim2pc*nf_global)
-      !hcat(ihalo)%lam_l = hcat(ihalo)%lam_e / sqrt(2*G_phys*hcat(ihalo)%hmass*msim2phys* r_equiv)
-
+ 
       hcat(ihalo)%je=hcat(ihalo)%je/norm2(hcat(ihalo)%je)
       hcat(ihalo)%jl=hcat(ihalo)%jl/norm2(hcat(ihalo)%jl)
       ! moment of inertia tensor
@@ -461,7 +459,7 @@ program CUBE_FoF
       hcat(ihalo)%jt(1)=torque(2,3)-torque(3,2)
       hcat(ihalo)%jt(2)=torque(3,1)-torque(1,3)
       hcat(ihalo)%jt(3)=torque(1,2)-torque(2,1)
-      hcat(ihalo)%lam_l=norm2(hcat(ihalo)%jt)/sum(hcat(ihalo)%qq*hcat(ihalo)%tide)
+      hcat(ihalo)%beta=norm2(hcat(ihalo)%jt)/sum(hcat(ihalo)%qq*hcat(ihalo)%tide)
 
       hcat(ihalo)%jt=hcat(ihalo)%jt/norm2(hcat(ihalo)%jt)
       ! eigen decomposition

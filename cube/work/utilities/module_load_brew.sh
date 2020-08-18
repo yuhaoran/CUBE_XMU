@@ -1,6 +1,6 @@
 export FC='gfortran'
-export XFLAG=' -O3 -cpp -fopenmp -fcoarray=single'
-export XFLAG_NO_OMP='-O3 -cpp -fcoarray=single'
+export XFLAG=' -O3 -cpp -mcmodel=medium -fopenmp -fcoarray=single'
+export XFLAG_NO_OMP='-O3 -cpp -mcmodel=medium -fcoarray=single'
 #export XFLAG=' -cpp -fopenmp -fcoarray=single -fcheck=all'
 #export XFLAG='-O3 -cpp -fcoarray=single -fopenmp'
 export OFLAG=${XFLAG}' -c'

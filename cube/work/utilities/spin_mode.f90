@@ -28,7 +28,8 @@ program lpt
   real t11,t22,t33,t12,t23,t31
   real tsmall(3,3),tlarge(3,3),torque(3,3)
   real spin(3,ngrid,ngrid,ngrid)
-  real,allocatable :: theta(:,:),imass_info(:,:)
+  real,allocatable :: betafield(:,:,:)
+  real,allocatable :: theta(:,:),imass_info(:,:),beta(:,:)
   real,allocatable :: corr_tqx(:,:,:),r_small(:)
   integer,allocatable :: ind(:,:),isort_mass(:),i1(:),i2(:),ii1,ii2
   equivalence(rho_f,crho_f)
@@ -103,7 +104,7 @@ program lpt
   print*,'  nmassbin =',nmassbin
   allocate(imass_info(6,nmassbin),i1(nmassbin),i2(nmassbin))
   !allocate(n_opt(n_rsmall))
-  allocate(corr_tqx(n_rsmall,nmassbin,6))
+  allocate(corr_tqx(n_rsmall,nmassbin,6),beta(n_rsmall,nhalo))
   allocate(r_small(n_rsmall))
   !n_opt=[25,25,25,24,23,22,21,19,18,17,16,15];
   imassbin=nmassbin
@@ -147,6 +148,7 @@ program lpt
   !close(12)
   !stop
 
+  allocate(betafield(ngrid,ngrid,ngrid))
   print*, jj,'/',' rs, t, q, x'
   do ir=1,n_rsmall
     call system_clock(tt1,t_rate)
@@ -167,7 +169,7 @@ program lpt
     imass_info(6,imassbin)=ii2
   enddo
   open(11,file=fn_out,status='replace',access='stream')
-  write(11) nmassbin,n_rsmall,imass_info(:,:),r_small,corr_tqx
+  write(11) nmassbin,n_rsmall,imass_info(:,:),r_small,corr_tqx,beta
   close(11)
 !call destroy_penfft_plan
 call destroy_cubefft_plan
@@ -186,8 +188,8 @@ contains
     !print*,rho_f(1:3,1,1); stop
     phi(1:ngrid,1:ngrid,1:ngrid)=rho_f(:ngrid,:,:)
     call buffer_1layer(phi)
-    !call gaussian_fourier_filter(phi_k,r_small*1.05)
-    call gaussian_fourier_filter_k2(phi_k,r_small)
+    call gaussian_fourier_filter(phi_k,r_small*1.02)
+    !call gaussian_fourier_filter_k2(phi_k,r_small)
     call sfftw_execute(plan_ifft_fine)
     phi_large(1:ngrid,1:ngrid,1:ngrid)=rho_f(:ngrid,:,:)
     call buffer_1layer(phi_large)
@@ -200,6 +202,7 @@ contains
       theta(1,ihalo)=ccc(hcat(ihalo)%jt,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
       theta(2,ihalo)=ccc(hcat(ihalo)%jl,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
       theta(3,ihalo)=ccc(hcat(ihalo)%je,spin(:,ind(1,ihalo),ind(2,ihalo),ind(3,ihalo)))
+      beta(ir,ihalo)=betafield(ind(1,ihalo),ind(2,ihalo),ind(3,ihalo))/0.02
     enddo
     
     do imassbin=1,nmassbin
@@ -212,7 +215,7 @@ contains
       corr_tqx(ir,imassbin,5)=sum(theta(2,ii1:ii2)**2)/(ii2-ii1+1)
       corr_tqx(ir,imassbin,6)=sum(theta(3,ii1:ii2)**2)/(ii2-ii1+1)
     enddo
-    print*, r_small, sum(theta,2)/nhalo
+    print*, r_small, sum(theta,2)/nhalo, sum(beta(ir,:))/nhalo
   endsubroutine
 
   real function ccc(vec_i,vec2)
@@ -265,6 +268,7 @@ contains
       spin(1,i,j,k)=-torque(2,3)+torque(3,2)
       spin(2,i,j,k)=-torque(3,1)+torque(1,3)
       spin(3,i,j,k)=-torque(1,2)+torque(2,1)
+      betafield(i,j,k)=norm2(spin(:,i,j,k))/sum(tsmall*tlarge)
       spin(:,i,j,k)=spin(:,i,j,k)/norm2(spin(:,i,j,k))
     enddo
     enddo
