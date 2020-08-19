@@ -27,7 +27,8 @@ program lpt
   integer i,j,k,n_rsmall,nmassbin,itemp,l
   real t11,t22,t33,t12,t23,t31
   real tsmall(3,3),tlarge(3,3),torque(3,3)
-  real spin(3,ngrid,ngrid,ngrid)
+  !real spin(3,ngrid,ngrid,ngrid)
+  real,allocatable :: spin(:,:,:,:)
   real,allocatable :: betafield(:,:,:)
   real,allocatable :: theta(:,:),imass_info(:,:),beta(:,:)
   real,allocatable :: corr_tqx(:,:,:),r_small(:)
@@ -87,6 +88,7 @@ program lpt
   allocate(phi(0:ngrid+1,0:ngrid+1,0:ngrid+1))
   allocate(phi_large(0:ngrid+1,0:ngrid+1,0:ngrid+1))
   allocate(phi_k(ngrid/2+1,ngrid,ngrid))
+  allocate(spin(3,ngrid,ngrid,ngrid))
 
   do ihalo=1,nhalo
     !ind(:,ihalo)=ceiling(hcat(ihalo)%q/real(ng_global)*real(ngrid)) ! indeces in phi
