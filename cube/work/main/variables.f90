@@ -84,6 +84,8 @@ module variables
   integer(4) t1,t2,tt1,tt2,ttt1,ttt2,t_rate
   real t0_ll,t0_af,t0_max,t0_vp
   integer t_ll1,t_ll2,t_af1,t_af2,t_max1,t_max2,t_vp1,t_vp2
+  integer,parameter :: n_neighbor=((1+2*pp_range)**3-1)/2
+  integer ijk(3,n_neighbor)
 
   type type_header_halo_tab
     integer(4) Ngroups,TotNgroups,Nids

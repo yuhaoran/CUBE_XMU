@@ -154,6 +154,29 @@ subroutine initialize
   print*,'  omp_get_max_threads =',nth
   print*, ''
 
+  ! pp force neighbors
+  ii=0
+  do k=-pp_range,-1
+  do j=-pp_range,pp_range
+  do i=-pp_range,pp_range
+    ii=ii+1
+    ijk(:,ii)=[i,j,k]
+  enddo
+  enddo
+  enddo
+  k=0
+  do j=-pp_range,-1
+  do i=-pp_range,pp_range
+    ii=ii+1
+    ijk(:,ii)=[i,j,k]
+  enddo
+  enddo
+  j=0
+  do i=-pp_range,-1
+    ii=ii+1
+    ijk(:,ii)=[i,j,k]
+  enddo
+
   t0_ll=0; t0_af=0; t0_max=0; t0_vp=0;
 
 endsubroutine
