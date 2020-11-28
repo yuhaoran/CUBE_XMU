@@ -21,7 +21,7 @@ program displacement_pro
   real,allocatable :: vc(:,:,:,:,:,:,:)
   integer(izipx),allocatable :: xp(:,:)
   integer(izipv),allocatable :: vp(:,:)
-  integer(4),allocatable :: pid(:)
+  integer(8),allocatable :: pid(:)
 
 #ifdef Emode
   integer dim_1,dim_2,dim_3,ig,jg,kg

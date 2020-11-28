@@ -31,9 +31,10 @@ program CUBE_FoF
   type(type_halo_catalog_header) halo_header
   type(type_halo_catalog_array),allocatable :: hcat(:)
 
-  integer np_iso,np_mem,np_head,cur_checkpoint
-  integer i,j,k,l,itx,ity,itz,nlast,ip,jp,np,nplocal,nlist,idx(3),n_friend,ngroup,ihalo,nhalo
-  integer iq1,iq2,iq3,np_candidate,np_central,pbc(3),jq(3),is1,is2,qi(3),qi_hoc(3)
+  integer(8) np_iso,np_mem,np_head,nplocal,nlast,ip,jp,qi(3),qi_hoc(3)
+  integer cur_checkpoint
+  integer i,j,k,l,itx,ity,itz,np,nlist,idx(3),n_friend,ngroup,ihalo,nhalo
+  integer iq1,iq2,iq3,np_candidate,np_central,pbc(3),jq(3),is1,is2
   integer(4) t1,t2,tt1,tt2,t_rate
   real pos1(3),rp,rp2,rsq,xf_hoc(3),vreal(3),torque(3,3),tide(6),jeig(3),t_opt(3),a_opt,r_equiv,msim2phys
   real mu_qj,mu_uj,mu_xj,mu_vj,mu_qu,mu_xv,sj(3)
@@ -42,9 +43,9 @@ program CUBE_FoF
   real(4),allocatable :: vfield(:,:,:,:,:,:,:),phi(:,:,:)[:,:,:]
   integer(izipx),allocatable :: xp(:,:)
   integer(izipv),allocatable :: vp(:,:)
-  integer(4),allocatable :: pid(:),iph_halo_all(:),iph_halo(:)
+  integer(8),allocatable :: pid(:),iph_halo_all(:),iph_halo(:)
 
-  integer(4),allocatable :: hoc(:,:,:),ll(:),ip_party(:),ip_friend(:),llgp(:),hcgp(:),ecgp(:),isort_mass(:)
+  integer(8),allocatable :: hoc(:,:,:),ll(:),ip_party(:),ip_friend(:),llgp(:),hcgp(:),ecgp(:),isort_mass(:)
   real,allocatable :: xf(:,:),vf(:,:),xf_party(:,:),dx(:,:),dv(:,:),dq(:,:),du(:,:),pos_fof(:,:),mu_quj(:),mu_xvj(:)
   real,allocatable :: x_mean_all(:,:),x_mean(:,:),v_mean_all(:,:),v_mean(:,:)
   real,allocatable :: q_mean_all(:,:),q_mean(:,:),u_mean_all(:,:),u_mean(:,:)
@@ -96,7 +97,7 @@ program CUBE_FoF
     nplocal=sim%nplocal;    print*, '  nplocal=',nplocal
     msim2phys=rho_crit*sim%omega_m*sim%box**3/sim%npglobal/sim%h0;  
     print*,'  msim2phys',msim2phys
-    nlist=nplocal/8
+    nlist=nplocal/64
 
     ! allocate checkpoint arrays
     allocate(xp(3,nplocal),vp(3,nplocal),rhoc(nt,nt,nt,nnt,nnt,nnt),vfield(3,nt,nt,nt,nnt,nnt,nnt),pid(nplocal))
@@ -607,7 +608,7 @@ program CUBE_FoF
       ! ip1->ip2->...->ipn
       ! ip1 is the head of chain (hoc)
       ! ipn is the end of chain (eoc)
-      integer i,j,ihead,jhead,iend,jend,ipart
+      integer(8) i,j,ihead,jhead,iend,jend,ipart
       jend=merge(j,ecgp(j),ecgp(j)==0)
       iend=merge(i,ecgp(i),ecgp(i)==0)
       if (iend==jend) return ! same chain
@@ -626,7 +627,7 @@ program CUBE_FoF
 
     function qgrid(pid0)
       implicit none
-      integer pid0,pidtemp,nfg2,qgrid(3)
+      integer(8) pid0,pidtemp,nfg2,qgrid(3)
       nfg2=nf_global**2
       pidtemp=pid0-1
       qgrid(3)=1+pidtemp/nfg2
@@ -636,8 +637,9 @@ program CUBE_FoF
 
     subroutine indexx(N,ARRIN,INDX)
       implicit none
-      integer N
-      integer INDX(n),INDXT,IR
+      integer(4) N ! number of halos to sort
+      integer(4) IR
+      integer(8) INDX(n),INDXT
       real ARRIN(N),Q
 
       DO 11 J=1,N

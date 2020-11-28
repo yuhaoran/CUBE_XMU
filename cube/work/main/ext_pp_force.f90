@@ -23,7 +23,7 @@ subroutine ext_pp_force
   integer :: ipll1_size, ipll2_size
 
 
-  integer icellpp,icellpp2,ncellpp,ijk(3,62)
+  integer icellpp,icellpp2
 
   if (head) then
     print*, ''
@@ -37,25 +37,6 @@ subroutine ext_pp_force
   print*,'  max num_threads =',nth
   allocate(ll(np_pp_max),hoc(1-ncell:nft+ncell,1-ncell:nft+ncell,1-ncell:nft+ncell))
   allocate(ipf(np_pp_max),ift1(np_pp_max/800),xf(3,np_pp_max),vf(3,np_pp_max),af(3,np_pp_max))
-  if (pp_range==1) then
-    ncellpp=13
-    ijk(:,1)=(/-1,-1,-1/) ! 9 cells in z-
-    ijk(:,2)=(/ 0,-1,-1/)
-    ijk(:,3)=(/ 1,-1,-1/)
-    ijk(:,4)=(/-1, 0,-1/)
-    ijk(:,5)=(/ 0, 0,-1/)
-    ijk(:,6)=(/ 1, 0,-1/)
-    ijk(:,7)=(/-1, 1,-1/)
-    ijk(:,8)=(/ 0, 1,-1/)
-    ijk(:,9)=(/ 1, 1,-1/)
-    ijk(:,10)=(/-1,-1, 0/) ! 3 cells in y-
-    ijk(:,11)=(/ 0,-1, 0/)
-    ijk(:,12)=(/ 1,-1, 0/)
-    ijk(:,13)=(/-1, 0, 0/) ! 1 cell in x-
-  elseif (pp_range==2) then
-    ncellpp=62
-    ! tbd
-  endif
 
   itest1=0
   f2_max_pp=0
@@ -118,7 +99,7 @@ subroutine ext_pp_force
 
       ipll2_size=ipll1_size
 
-      do icellpp=1,ncellpp
+      do icellpp=1,n_neighbor
         ipll2=hoc(igx+ijk(1,icellpp),igy+ijk(2,icellpp),igz+ijk(3,icellpp))
         do while (ipll2/=0)
           ipll2_size=ipll2_size+1
